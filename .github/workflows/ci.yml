@@ -1,0 +1,39 @@
+name: CI
+on:
+  push:
+    branches: [main, release]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Oracle self-check (independent Python implementation)
+        run: npm run oracle:selfcheck
+      - name: Unit, invariant and TS-vs-oracle tests + milestone coverage
+        run: npm run coverage:check
+      - name: Build
+        run: npm run build
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end tests (production build, production CSP) + milestone coverage
+        run: npm run e2e:check
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results
+          retention-days: 7

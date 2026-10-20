@@ -1,0 +1,264 @@
+{
+  "reconcile": [
+    {
+      "id": "c01",
+      "received": 1000000,
+      "status": "paid"
+    },
+    {
+      "id": "c02",
+      "received": 500000,
+      "status": "paid"
+    },
+    {
+      "id": "c03",
+      "received": 2000000,
+      "status": "paid"
+    },
+    {
+      "id": "c04",
+      "received": 200000,
+      "status": "partial"
+    },
+    {
+      "id": "c05",
+      "received": 1500000,
+      "status": "paid"
+    },
+    {
+      "id": "c06",
+      "received": 1000000,
+      "status": "paid"
+    },
+    {
+      "id": "c07",
+      "received": 2500000,
+      "status": "paid"
+    },
+    {
+      "id": "c08",
+      "received": 1000000,
+      "status": "overpaid"
+    },
+    {
+      "id": "c09",
+      "received": 100000,
+      "status": "paid"
+    },
+    {
+      "id": "c10",
+      "received": 0,
+      "status": "outstanding"
+    },
+    {
+      "id": "c11",
+      "received": 750000,
+      "status": "paid"
+    },
+    {
+      "id": "c12",
+      "received": 300000,
+      "status": "paid"
+    }
+  ],
+  "allocation": [
+    {
+      "id": "c01",
+      "invested": 970000,
+      "fees": {
+        "f1": 30000
+      },
+      "refund": 0,
+      "shares": "4018.726436",
+      "claimableShares": 4018,
+      "claimableAmount": 969824
+    },
+    {
+      "id": "c02",
+      "invested": 485000,
+      "fees": {
+        "f1": 15000
+      },
+      "refund": 0,
+      "shares": "2009.363218",
+      "claimableShares": 2009,
+      "claimableAmount": 484912
+    },
+    {
+      "id": "c03",
+      "invested": 1940000,
+      "fees": {
+        "f1": 60000
+      },
+      "refund": 0,
+      "shares": "8037.452873",
+      "claimableShares": 8037,
+      "claimableAmount": 1939890
+    },
+    {
+      "id": "c04",
+      "invested": 194000,
+      "fees": {
+        "f1": 6000
+      },
+      "refund": 0,
+      "shares": "803.745287",
+      "claimableShares": 803,
+      "claimableAmount": 193820
+    },
+    {
+      "id": "c05",
+      "invested": 1455000,
+      "fees": {
+        "f1": 45000
+      },
+      "refund": 0,
+      "shares": "6028.089654",
+      "claimableShares": 6028,
+      "claimableAmount": 1454978
+    },
+    {
+      "id": "c06",
+      "invested": 970000,
+      "fees": {
+        "f1": 30000
+      },
+      "refund": 0,
+      "shares": "4018.726436",
+      "claimableShares": 4018,
+      "claimableAmount": 969824
+    },
+    {
+      "id": "c07",
+      "invested": 2425000,
+      "fees": {
+        "f1": 75000
+      },
+      "refund": 0,
+      "shares": "10046.816091",
+      "claimableShares": 10046,
+      "claimableAmount": 2424803
+    },
+    {
+      "id": "c08",
+      "invested": 485000,
+      "fees": {
+        "f1": 15000
+      },
+      "refund": 0,
+      "shares": "2009.363218",
+      "claimableShares": 2009,
+      "claimableAmount": 484912
+    },
+    {
+      "id": "c09",
+      "invested": 97000,
+      "fees": {
+        "f1": 3000
+      },
+      "refund": 0,
+      "shares": "401.872643",
+      "claimableShares": 401,
+      "claimableAmount": 96789
+    },
+    {
+      "id": "c10",
+      "invested": 0,
+      "fees": {},
+      "refund": 0,
+      "shares": "0.000000",
+      "claimableShares": 0,
+      "claimableAmount": 0
+    },
+    {
+      "id": "c11",
+      "invested": 727500,
+      "fees": {
+        "f1": 22500
+      },
+      "refund": 0,
+      "shares": "3014.044827",
+      "claimableShares": 3014,
+      "claimableAmount": 727489
+    },
+    {
+      "id": "c12",
+      "invested": 291000,
+      "fees": {
+        "f1": 9000
+      },
+      "refund": 0,
+      "shares": "1205.617930",
+      "claimableShares": 1205,
+      "claimableAmount": 290850
+    }
+  ],
+  "exit": [
+    {
+      "id": "c01",
+      "capital": 970000,
+      "distribution": 3173710,
+      "multiple100": 327
+    },
+    {
+      "id": "c02",
+      "capital": 485000,
+      "distribution": 1586855,
+      "multiple100": 327
+    },
+    {
+      "id": "c03",
+      "capital": 1940000,
+      "distribution": 6347420,
+      "multiple100": 327
+    },
+    {
+      "id": "c04",
+      "capital": 194000,
+      "distribution": 634742,
+      "multiple100": 327
+    },
+    {
+      "id": "c05",
+      "capital": 1455000,
+      "distribution": 4760565,
+      "multiple100": 327
+    },
+    {
+      "id": "c06",
+      "capital": 970000,
+      "distribution": 3173710,
+      "multiple100": 327
+    },
+    {
+      "id": "c07",
+      "capital": 2425000,
+      "distribution": 7934276,
+      "multiple100": 327
+    },
+    {
+      "id": "c08",
+      "capital": 485000,
+      "distribution": 1586855,
+      "multiple100": 327
+    },
+    {
+      "id": "c09",
+      "capital": 97000,
+      "distribution": 317371,
+      "multiple100": 327
+    },
+    {
+      "id": "c11",
+      "capital": 727500,
+      "distribution": 2380283,
+      "multiple100": 327
+    },
+    {
+      "id": "c12",
+      "capital": 291000,
+      "distribution": 952113,
+      "multiple100": 327
+    }
+  ]
+}

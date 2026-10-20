@@ -1,0 +1,190 @@
+// Test Plan §4, M2 end-to-end cases.
+import { readFileSync } from 'node:fs'
+import { expect, test, type Request } from '@playwright/test'
+import { reviewSample, row, start, watchConsole } from './helpers'
+
+test('E2E-01a sample → confirm 3, reject 2 → hand off → allocation matches Test Plan §3', async ({ page, context }) => {
+  const problems = watchConsole(page)
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await start(page)
+  const totals = page.getByTestId('rec-totals')
+  await expect(totals).toContainText('£114,840.00')
+  await expect(totals).toContainText('£66,000.00')
+  await reviewSample(page)
+  await expect(totals).toContainText('£108,500.00')
+  await expect(totals).toContainText('£6,340.00')
+  // only one reminder left: t11 unmatched for 13 days
+  const failing = page.locator('.check-list li:not(.pass)')
+  await expect(failing).toHaveCount(1)
+  await expect(failing).toContainText('WESTBRIDGE SUPPLIES: not matched for 13 days')
+
+  await page.getByRole('button', { name: 'Hand off to allocation' }).click()
+  const t = page.getByTestId('alloc-totals')
+  for (const v of ['£103,500.00', '£100,395.00', '£3,105.00', '£1,500.00', '£98,895.00']) await expect(t).toContainText(v)
+  await expect(t).toContainText('Refunds£0.00')
+  await expect(page.locator('.check-list li.fail')).toHaveCount(0)
+
+  await expect(row(page, 'Amelia Hart')).toContainText('£9,700.00')
+  await expect(row(page, 'Amelia Hart')).toContainText('4018.726436')
+  await expect(row(page, 'Amelia Hart')).toContainText('4,018 shares / £9,698.24')
+  await expect(row(page, 'Amelia Hart')).toContainText('not claimable £1.76')
+  await expect(row(page, 'David Kim')).toContainText('£1,940.00')
+  await expect(row(page, 'David Kim')).toContainText('803.745287')
+  await expect(row(page, 'David Kim')).toContainText('803 shares / £1,938.20')
+  await expect(row(page, 'David Kim')).toContainText('not claimable £1.80')
+  await expect(row(page, 'Isla Campbell')).toContainText('£970.00')
+  await expect(row(page, 'Isla Campbell')).toContainText('Allocated')
+  await expect(row(page, 'James Whitfield')).toContainText('Out: No money received')
+  await expect(page.getByTestId('excess')).toContainText('Hugo Bernard: £5,000.00')
+  // R-ALL-09: scheme groups add up to the whole (Test Plan §3: 4 / 3 / 4 investors)
+  const scheme = page.getByRole('table', { name: 'By tax scheme' })
+  await expect(scheme.locator('tr', { hasText: 'SEIS' }).first()).toContainText('4£23,765.00')
+  await expect(scheme.locator('tr', { hasText: /^EIS/ })).toContainText('3£29,100.00')
+  await expect(scheme.locator('tr', { hasText: 'none' })).toContainText('4£47,530.00')
+  await expect(page.getByText('SEIS shares must be issued on an earlier day than EIS shares — the same day is not enough.')).toBeVisible()
+
+  // TC-ALL-24 in a real browser: the clipboard holds exactly the text on screen
+  await page.getByRole('button', { name: 'Copy closing confirmation' }).click()
+  await expect(page.getByText('Copied to the clipboard.')).toBeVisible()
+  const onScreen = await page.getByTestId('confirmation').textContent()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(onScreen)
+  expect(problems).toEqual([])
+})
+
+test('E2E-02a a changed confirmation marks the allocation out of date; handing off again replaces it whole', async ({ page }) => {
+  const problems = watchConsole(page)
+  await start(page)
+  await reviewSample(page)
+  await page.getByRole('button', { name: 'Hand off to allocation' }).click()
+  await expect(page.getByTestId('stale')).toHaveCount(0)
+  // downstream edits that a fresh hand-off must wipe out: a renamed row and an added row
+  await page.getByText(/^Investors \(12\)$/).click()
+  await page.getByLabel('Allocation investor 1 name').fill('Edited here')
+  await page.getByLabel('Allocation investor 1 name').press('Enter')
+  await page.getByRole('button', { name: 'Add investor' }).click()
+  await expect(page.getByText(/^Investors \(13\)$/)).toBeVisible()
+
+  // upstream: t03 (£20,000) moves from Chloe Martin to Grace Liu
+  await page.getByRole('tab', { name: /Reconciliation/ }).click()
+  await page.getByRole('button', { name: 'Undo decision on t03' }).click()
+  await page.getByLabel('Assign t03 to an investor').first().selectOption({ label: 'Grace Liu (NW-007)' })
+  await expect(page.getByRole('tab', { name: /Allocation/ })).toContainText('out of date')
+  await page.getByRole('tab', { name: /Allocation/ }).click()
+  await expect(page.getByTestId('stale')).toBeVisible()
+  await page.getByRole('button', { name: /Hand off again/ }).click()
+  await expect(page.getByTestId('stale')).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: /Allocation/ })).not.toContainText('out of date')
+  await expect(page.getByText(/^Investors \(12\)$/)).toBeVisible()
+  await expect(page.locator('[data-investor="Edited here"]')).toHaveCount(0)
+  await expect(row(page, 'Amelia Hart')).toBeVisible()
+  // the new data came in: Chloe has nothing, Grace's extra £20,000 is a refund, the raise falls by Chloe's £19,400
+  await expect(row(page, 'Chloe Martin')).toContainText('Out: No money received')
+  await expect(page.getByTestId('excess')).toContainText('Grace Liu: £20,000.00')
+  await expect(page.getByTestId('alloc-totals')).toContainText('£80,995.00')
+  expect(problems).toEqual([])
+})
+
+test('E2E-03 privacy: only static GETs, no request bodies, no deal data in any URL', async ({ page, context }) => {
+  const problems = watchConsole(page)
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  const requests: Request[] = []
+  context.on('request', (r) => requests.push(r)) // every page and worker in the context, not just this page
+  await start(page)
+  // the paste-import path too
+  await page.getByText(/^Investors \(12\)$/).click()
+  await page.getByText('Import investors (replaces the list)').click()
+  await page.getByLabel('Paste CSV text (first line is the header)').first().fill('name,reference,cash_due\nZara Quinn,ZQ-001,1234.56')
+  await page.getByRole('button', { name: 'Import pasted text' }).first().click()
+  await expect(page.getByText('Imported 1 investors.')).toBeVisible()
+  await page.getByRole('button', { name: 'Load sample deal' }).click()
+  await reviewSample(page)
+  const files: Record<string, string> = {}
+  const save = async (name: string) => {
+    const dl = page.waitForEvent('download')
+    await page.getByRole('button', { name }).click()
+    const d = await dl
+    files[d.suggestedFilename()] = readFileSync((await d.path())!, 'utf8')
+  }
+  await save('Export ledger CSV')
+  await save('Export chase list CSV')
+  await page.getByRole('button', { name: 'Hand off to allocation' }).click()
+  await page.getByRole('button', { name: 'Copy closing confirmation' }).click()
+  await save('Export allocation CSV')
+  // Test Plan §6: file names carry the currency; contents match the screen
+  expect(Object.keys(files).sort()).toEqual(['allocation_GBP.csv', 'chase_list_GBP.csv', 'ledger_GBP.csv'])
+  expect(files['ledger_GBP.csv']).toContain('t03,2026-10-07,20000.00,CHLOE MARTIN,,confirmed,c03,Chloe Martin,person')
+  expect(files['chase_list_GBP.csv']).toContain('c04,David Kim,david@example.com,2500.00,2000.00,-500.00,partial')
+  expect(files['allocation_GBP.csv']).toContain('c01,Amelia Hart,SEIS,10000.00,9700.00,4018.726436,300.00,300.00,0.00,4018,9698.24,allocated')
+  // Tech Design §4: the document is served with the security headers
+  const doc = await page.request.get('/')
+  expect(doc.headers()['content-security-policy']).toContain("connect-src 'none'")
+  expect(doc.headers()['content-security-policy']).toContain("script-src 'self'")
+  expect(doc.headers()['content-security-policy']).toContain("style-src 'self'")
+  expect(doc.headers()['x-content-type-options']).toBe('nosniff')
+  expect(doc.headers()['referrer-policy']).toBe('no-referrer')
+  expect(doc.headers()['permissions-policy']).toContain('camera=()')
+  await page.reload()
+  await expect(page.getByTestId('deal-name')).toContainText('Northwind')
+
+  expect(requests.length).toBeGreaterThan(0)
+  const secrets = ['Amelia', 'Hart', 'Zara', 'ZQ-001', '1234', 'NW-0', 'NW0', '10000', '98895', 'Northwind', 'example.com']
+  for (const r of requests) {
+    const url = new URL(r.url())
+    if (url.protocol === 'blob:') continue // a download made inside the page; nothing leaves the browser
+    expect(r.method(), r.url()).toBe('GET')
+    expect(r.postData(), r.url()).toBeNull()
+    expect(url.origin).toBe('http://localhost:4174')
+    expect(url.pathname, r.url()).toMatch(/^\/(|favicon\.svg|assets\/[\w.-]+\.(js|css|woff2))$/)
+    expect(url.search + url.hash).toBe('')
+    for (const s of secrets) expect(decodeURIComponent(r.url())).not.toContain(s)
+  }
+  expect(problems).toEqual([])
+})
+
+test('E2E-04 data survives a reload; "Clear all data" wipes it', async ({ page }) => {
+  await start(page)
+  await reviewSample(page)
+  await page.getByRole('button', { name: 'Hand off to allocation' }).click()
+  await page.reload()
+  await page.getByRole('tab', { name: /Allocation/ }).click()
+  await expect(page.getByTestId('alloc-totals')).toContainText('£98,895.00')
+  await expect(page.getByTestId('excess')).toContainText('Hugo Bernard: £5,000.00')
+  await expect(page.getByTestId('stale')).toHaveCount(0)
+  await page.getByRole('tab', { name: /Reconciliation/ }).click()
+  await expect(page.getByTestId('deal-name')).toHaveText('Northwind Robotics — Seed SPV (fictional sample)')
+  await expect(page.getByText('Nothing to review.')).toBeVisible()
+  await expect(page.getByTestId('rec-totals')).toContainText('£108,500.00')
+  await page.getByText(/^Investors \(12\)$/).click()
+  await page.getByText('Import investors (replaces the list)').click()
+  await page.getByLabel('Paste CSV text (first line is the header)').first().fill('name,reference,cash_due\nZara Quinn,ZQ-001,1')
+  await page.getByRole('button', { name: 'Clear all data' }).click()
+  await page.getByRole('button', { name: 'Clear everything' }).click()
+  await expect(page.getByTestId('deal-name')).toHaveText('New deal')
+  await expect(page.locator('body')).not.toContainText('Zara Quinn')
+  await expect(page.locator('body')).not.toContainText('Amelia')
+  expect(await page.evaluate(() => localStorage.getItem('deal-ops-toolkit:v1'))).toBeNull()
+  await page.reload()
+  await expect(page.getByTestId('deal-name')).toHaveText('New deal')
+  await expect(page.getByText(/^Investors \(0\)$/)).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Before you start' })).toBeVisible()
+  const saved = await page.evaluate(() => JSON.stringify(localStorage))
+  for (const s of ['Northwind', 'Amelia', 'NW-001']) expect(saved).not.toContain(s)
+})
+
+test('E2E-06 first open shows the disclaimer; the footer has the disclaimer and a feedback email link', async ({ page }) => {
+  const problems = watchConsole(page)
+  await page.goto('/')
+  const dialog = page.getByRole('dialog', { name: 'Before you start' })
+  await expect(dialog).toContainText('not investment, tax or legal advice')
+  await expect(dialog).toContainText('Check every result yourself before you rely on it')
+  await expect(dialog).toContainText('Not affiliated with any platform')
+  await page.getByRole('button', { name: 'I understand', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await page.reload()
+  await expect(page.getByRole('dialog', { name: 'Before you start' })).toHaveCount(0)
+  await expect(page.getByTestId('footer-disclaimer')).toContainText('not investment, tax or legal advice')
+  const link = page.getByRole('link', { name: 'Send feedback by email' })
+  await expect(link).toHaveAttribute('href', /^mailto:/)
+  await expect(page.locator('footer')).toContainText("Please don't send real investor information.")
+  expect(problems).toEqual([])
+})
