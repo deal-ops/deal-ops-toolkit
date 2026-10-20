@@ -128,6 +128,37 @@ const MUTANTS = [
   ['src/components/common.tsx', "if (state.resetKey !== resetKey) setState({ resetKey, open: startOpen || keepOpen })", "", 'a whole new list keeps the old open state, inside Section (G3 M-11)'],
   ['src/components/Allocation.tsx', "{a.price.trim() === '' && (", "{false && (", 'no starting hint on an empty allocation (G3 M-11)'],
   ['src/components/listMessage.ts', "msg !== null && msg.list === listKey ? msg.value : null", "msg !== null ? msg.value : null", 'an import message outlives its list (G3 acceptance)'],
+  // ---- UI polish (owner review 2026-10-20; PRD v0.7.4 decision 9) ----
+  ['src/theme.ts', "return v === 'light' || v === 'dark' ? v : 'system'", "return (v as Theme) ?? 'system'", 'any stored text is taken as a theme'],
+  ['src/theme.ts', "if (theme === 'system') storage?.removeItem(THEME_KEY)", "if (false) storage?.removeItem(THEME_KEY)", 'System is stored instead of removed'],
+  ['src/theme.ts', "if (theme === 'system') root.removeAttribute('data-theme')", "if (false) root.removeAttribute('data-theme')", 'System leaves the old theme mark on the page'],
+  ['src/App.tsx', "    remember(null)\n    chooseTheme('system')\n", "    remember(null)\n", 'Clear all data keeps the theme choice'],
+  ['src/components/common.tsx', "if (!root.current?.contains(e.target as Node)) setOpen(false)", "", 'a click elsewhere leaves the explanation open'],
+  ['src/components/common.tsx', "        e.stopPropagation() // closes the explanation, not the tour\n        setOpen(false)", "        e.stopPropagation() // closes the explanation, not the tour", 'Esc does not close the explanation'],
+  ['src/components/common.tsx', "        e.stopPropagation() // closes the explanation, not the tour\n", "", 'Esc on an explanation also ends the tour'],
+  // ---- currency (PRD v0.7.5 decision 10) ----
+  ['src/lib/money.ts', "sym === SYMBOL[currency] || (currency === 'USD' && sym === '$')", "sym === SYMBOL[currency]", 'a bare $ refused in a USD deal'],
+  ['src/lib/money.ts', "sym === SYMBOL[currency] || (currency === 'USD' && sym === '$')", "sym === SYMBOL[currency] || sym === '$'", 'a bare $ accepted in any deal'],
+  ['src/lib/money.ts', "Number(m[2].replace(/,/g, '')) * 1_000_000", "Number(m[2]) * 1_000_000", 'share price commas not removed'],
+  ['src/lib/csv.ts', "if (c !== '' && c.toUpperCase() !== currency)", "if (c !== '' && c !== currency)", 'lower-case currency code refused'],
+  ['src/lib/csv.ts', "if (c !== '' && c.toUpperCase() !== currency)", "if (false)", 'a wrong currency column is accepted'],
+  ['src/lib/csv.ts', "      currencyCol = idx\n      return\n", "      currencyCol = idx\n", 'the currency column is also listed as ignored'],
+  ['src/lib/exports.ts', "    `Currency: ${currency}`,\n", "", 'closing confirmation without the currency code'],
+  ['src/lib/exports.ts', "sharePriceMicros === null ? '' : plainPrice(sharePriceMicros), currency]),", "sharePriceMicros === null ? '' : plainPrice(sharePriceMicros), '']),", 'holdings export without the currency'],
+  ['src/components/DealSettings.tsx', "if (amounts > 0) return setAskCurrency(c)", "", 'currency changes over amounts without asking'],
+  ['src/state.ts', "...s.commitments.map((c) => c.cashDue),", "", 'investor amounts not counted before a currency change'],
+  // ---- UI polish self-test fixes ----
+  ['src/components/common.tsx', "if (open && !root.current?.contains(e.relatedTarget as Node | null)) setOpen(false)", "", 'moving focus away leaves the explanation open (#3)'],
+  // Not listed: removing `onClick={(e) => e.preventDefault()}` from the explanation (#4). jsdom does not run a <label>'s
+  // activation for clicks on its descendants, so no unit test can see it; the E2E case "E2E-01b a click on the hurdle
+  // explanation …" in e2e/m4.spec.ts does, and was checked on 2026-10-20 to fail without the line and pass with it.
+  ['src/state.ts', "    a.excess.length + // over-payments listed for refund at hand-off (UI polish self-test #5)\n", "", 'refunds not counted before a currency change (#5)'],
+  ['src/App.tsx', "if (confirmClear) cancelClearBtn.current?.focus()", "if (confirmClear) void 0", 'focus left behind when the clear confirmation opens (#2)'],
+  // ---- Codex UI polish review ----
+  ['src/components/common.tsx', "    setOpen(!open)\n    // Safari does not focus a clicked button: without this, Esc would reach the tour instead of the explanation (Codex UI polish #1)\n    button.current?.focus()\n", "    setOpen(!open)\n", 'opening an explanation leaves focus outside it (#1)'],
+  ['src/components/common.tsx', "      aria-describedby={describedBy}\n", "", 'money fields lose their currency for screen readers (#2)'],
+  ['src/components/DealSettings.tsx', "if (askCurrency) cancelCurrency.current?.focus()", "if (askCurrency) void 0", 'focus left on the select when the currency confirmation opens (#3)'],
+  ['src/App.tsx', "onClick={() => setConfirmClear(true)} disabled={confirmClear}", "onClick={() => setConfirmClear(true)}", 'Clear all data stays active under its own confirmation'],
 ]
 
 let survived = 0

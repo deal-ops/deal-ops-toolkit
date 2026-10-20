@@ -4,7 +4,11 @@
 
 export type Currency = 'GBP' | 'EUR' | 'USD'
 export const CURRENCIES: Currency[] = ['GBP', 'EUR', 'USD']
-export const SYMBOL: Record<Currency, string> = { GBP: '£', EUR: '€', USD: '$' }
+// US$ rather than a bare $ in an English (en-GB) interface: unambiguous on documents sent to others (PRD v0.7.5 decision 10)
+export const SYMBOL: Record<Currency, string> = { GBP: '£', EUR: '€', USD: 'US$' }
+/** I-01: symbols accepted on input; a bare $ also means US$ */
+const SYMBOL_IN = String.raw`(£|€|US\$|\$)`
+const symbolFits = (sym: string, currency: Currency) => sym === SYMBOL[currency] || (currency === 'USD' && sym === '$')
 
 export const MAX_MONEY = 100_000_000_000 // 1,000,000,000.00 in minor units (I-01)
 export const MAX_PRICE_MICROS = 1_000_000_000_000 // 1,000,000 (I-03)
@@ -23,11 +27,11 @@ const DIGITS = String.raw`(?:\d{1,3}(?:,\d{3})+|\d+)`
 export function parseMoney(raw: string, currency: Currency, allowNegative = false): Parsed<number> {
   const s = trimAscii(raw)
   if (s === '') return fail('required')
-  const m = new RegExp(String.raw`^(-)?([£€$])?(-)?(${DIGITS})(?:\.(\d{1,2}))?$`).exec(s)
+  const m = new RegExp(String.raw`^(-)?${SYMBOL_IN}?(-)?(${DIGITS})(?:\.(\d{1,2}))?$`).exec(s)
   if (!m) return fail(`"${raw}" is not an amount (use 1234.56 or 1,234.56)`)
   const [, neg1, sym, neg2, int, frac] = m
   if (neg1 && neg2) return fail(`"${raw}" is not an amount`)
-  if (sym && sym !== SYMBOL[currency]) return fail(`"${raw}" uses ${sym} but this deal is in ${currency}`)
+  if (sym && !symbolFits(sym, currency)) return fail(`"${raw}" uses ${sym} but this deal is in ${currency}`)
   const negative = Boolean(neg1 || neg2)
   if (negative && !allowNegative) return fail('cannot be negative')
   const minor = Number(int.replace(/,/g, '')) * 100 + Number((frac ?? '').padEnd(2, '0'))
@@ -46,14 +50,14 @@ export function parsePercent(raw: string): Parsed<number> {
   return okv(bps)
 }
 
-/** I-03: > 0, up to 6 decimals, ≤ 1,000,000. Returns micros. */
+/** I-03: > 0, up to 6 decimals, ≤ 1,000,000; thousands commas as in I-01. Returns micros. */
 export function parsePrice(raw: string, currency: Currency): Parsed<number> {
   const s = trimAscii(raw)
   if (s === '') return fail('required')
-  const m = /^([£€$])?(\d+)(?:\.(\d{1,6}))?$/.exec(s)
-  if (!m) return fail(`"${raw}" is not a share price (up to 6 decimals)`)
-  if (m[1] && m[1] !== SYMBOL[currency]) return fail(`"${raw}" uses ${m[1]} but this deal is in ${currency}`)
-  const micros = Number(m[2]) * 1_000_000 + Number((m[3] ?? '').padEnd(6, '0'))
+  const m = new RegExp(String.raw`^${SYMBOL_IN}?(${DIGITS})(?:\.(\d{1,6}))?$`).exec(s)
+  if (!m) return fail(`"${raw}" is not a share price (up to 6 decimals; use 1234.56 or 1,234.56)`)
+  if (m[1] && !symbolFits(m[1], currency)) return fail(`"${raw}" uses ${m[1]} but this deal is in ${currency}`)
+  const micros = Number(m[2].replace(/,/g, '')) * 1_000_000 + Number((m[3] ?? '').padEnd(6, '0'))
   if (micros <= 0) return fail('must be greater than 0')
   if (micros > MAX_PRICE_MICROS) return fail('exceeds the 1,000,000 limit')
   return okv(micros)

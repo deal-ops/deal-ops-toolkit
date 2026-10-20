@@ -1,6 +1,6 @@
 // PRD §4.1 payment reconciliation: import, match, review, status, exports, hand-off.
 import { useState, type Dispatch } from 'react'
-import { formatMoney, type Currency } from '../lib/money'
+import { SYMBOL, formatMoney, type Currency } from '../lib/money'
 import { AGED_NOTE, decide, type Commitment, type CommitmentStatus, type LineResult, type LineStatus, type ReconcileResult } from '../lib/reconcile'
 import type { InputError, Outcome } from '../lib/outcome'
 import { importBank, importCommitments } from '../lib/csv'
@@ -54,12 +54,13 @@ export function Reconciliation({
   const result = outcome?.ok ? outcome.result : null
   const internal = outcome !== null && !outcome.ok && Boolean(outcome.internal)
   const m = (x: number) => formatMoney(x, cur)
+  const sym = SYMBOL[cur] // money fields say which currency they are in (owner review 2026-10-20)
 
   const importInvestors = (text: string) => {
     const r = importCommitments(text, cur)
     if (!r.ok) return setInvestorMsg({ ok: false, errors: r.errors }, false)
     dispatch({ type: 'replaceCommitments', rows: r.rows.map(commitmentRow) })
-    setInvestorMsg({ ok: true, text: `Imported ${r.rows.length} investors.${ignored(r.ignoredColumns)}` }, true)
+    setInvestorMsg({ ok: true, text: `Imported ${r.rows.length} investors. Amounts read as ${cur}.${ignored(r.ignoredColumns)}` }, true)
   }
   const importStatement = (text: string) => {
     let existing: ReturnType<typeof deriveBankLines>['input'] = []
@@ -77,7 +78,10 @@ export function Reconciliation({
     dispatch({ type: 'importBank', mode: bankMode, rows: bankMode === 'append' ? [...state.bank, ...added] : added })
     const dup = r.ignoredDuplicates ? ` ${r.ignoredDuplicates} already imported (ignored).` : ''
     setBankMsg(
-      { ok: true, text: `${bankMode === 'replace' ? 'Replaced the statement with' : 'Appended'} ${r.added} lines.${dup}${ignored(r.ignoredColumns)}` },
+      {
+        ok: true,
+        text: `${bankMode === 'replace' ? 'Replaced the statement with' : 'Appended'} ${r.added} lines. Amounts read as ${cur}.${dup}${ignored(r.ignoredColumns)}`,
+      },
       bankMode === 'replace',
     )
   }
@@ -133,7 +137,7 @@ export function Reconciliation({
                 <th>Name</th>
                 <th>Email</th>
                 <th>Payment reference</th>
-                <th>Cash due (including any fees charged to the investor)</th>
+                <th>Cash due ({sym}, including any fees charged to the investor)</th>
                 <th>
                   <Term term="S/EIS">Scheme</Term>
                 </th>
@@ -226,7 +230,7 @@ export function Reconciliation({
                 <th>#</th>
                 <th>Transaction ID</th>
                 <th>Date</th>
-                <th>Amount</th>
+                <th>Amount ({sym})</th>
                 <th>Payer</th>
                 <th>Bank reference</th>
                 <th />
@@ -286,14 +290,14 @@ export function Reconciliation({
       <Checks tour="rec-checks" checks={outcome?.ok ? outcome.checks : []} unavailable={derivedErrors.length > 0} internal={internal} pending={pending} />
 
       <div className="row-actions">
-        <button type="button" disabled={!result || pending} onClick={() => result && download(`ledger_${cur}.csv`, ledgerCsv(result))}>
+        <button type="button" disabled={!result || pending} onClick={() => result && download(`ledger_${cur}.csv`, ledgerCsv(result, cur))}>
           Export ledger CSV
         </button>
         <button
           type="button"
           data-tour="chase-export"
           disabled={!result || pending}
-          onClick={() => result && download(`chase_list_${cur}.csv`, chaseListCsv(result))}
+          onClick={() => result && download(`chase_list_${cur}.csv`, chaseListCsv(result, cur))}
         >
           Export chase list CSV
         </button>

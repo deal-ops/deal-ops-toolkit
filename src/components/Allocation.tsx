@@ -1,6 +1,6 @@
 // PRD §4.2 closing allocation: inputs, result, blockers, S/EIS, confirmation, export.
-import { useState, type Dispatch } from 'react'
-import { formatMicroShares, formatMoney } from '../lib/money'
+import { useId, useState, type Dispatch } from 'react'
+import { SYMBOL, formatMicroShares, formatMoney } from '../lib/money'
 import { SEIS_BEFORE_EIS_NOTE, SEIS_EIS_HINT, type AllocationResult, type FeeKind, type FeePayer } from '../lib/allocation'
 import type { InputError, Outcome } from '../lib/outcome'
 import { blocked } from '../lib/outcome'
@@ -68,6 +68,8 @@ export function Allocation({
   const cur = state.deal.currency
   const a = state.allocation
   const m = (x: number) => formatMoney(x, cur)
+  const sym = SYMBOL[cur] // money fields say which currency they are in (owner review 2026-10-20)
+  const ccyId = useId()
   // bumps whenever the investor list is replaced whole: the section and its rows start afresh (Codex M2 R3 #7, G3 M-11)
   const listKey = state.tables.investors
   const [importMsg, setImportMsg] = useListMessage<{ ok: true; text: string } | { ok: false; errors: InputError[] }>(listKey)
@@ -85,7 +87,7 @@ export function Allocation({
     setImportMsg(
       {
         ok: true,
-        text: `Imported ${r.rows.length} investors.${r.ignoredColumns.length ? ` Ignored columns: ${r.ignoredColumns.join(', ')}.` : ''}`,
+        text: `Imported ${r.rows.length} investors. Amounts read as ${cur}.${r.ignoredColumns.length ? ` Ignored columns: ${r.ignoredColumns.join(', ')}.` : ''}`,
       },
       true,
     )
@@ -125,14 +127,30 @@ export function Allocation({
           Start with the share price for this round. Add any fees, such as a platform fee, under Fees below.
         </p>
       )}
+      {/* the currency in the accessible description of money fields: their aria-label hides the visible label (Codex UI polish #2) */}
+      <span id={ccyId} hidden>
+        In {cur}
+      </span>
       <div className="form-grid">
         <label>
-          Share price
-          <Cell className="field" label="Share price" value={a.price} onCommit={(v) => dispatch({ type: 'setAllocation', patch: { price: v } })} />
+          Share price ({sym} per share)
+          <Cell
+            className="field"
+            label="Share price"
+            describedBy={ccyId}
+            value={a.price}
+            onCommit={(v) => dispatch({ type: 'setAllocation', patch: { price: v } })}
+          />
         </label>
         <label data-tour="cap">
-          Round cap (blank = no cap)
-          <Cell className="field" label="Round cap" value={a.cap} onCommit={(v) => dispatch({ type: 'setAllocation', patch: { cap: v } })} />
+          Round cap ({sym}, blank = no cap)
+          <Cell
+            className="field"
+            label="Round cap"
+            describedBy={ccyId}
+            value={a.cap}
+            onCommit={(v) => dispatch({ type: 'setAllocation', patch: { cap: v } })}
+          />
         </label>
       </div>
       <p className="hint">
@@ -142,19 +160,19 @@ export function Allocation({
 
       <h3>Fees</h3>
       <div className="table-wrap">
-        <table className="grid" aria-label="Fees">
+        <table className="grid fees" aria-label="Fees">
           <thead>
             <tr>
               <th>Name</th>
               <th>Paid by</th>
               <th>Type</th>
-              <th>Rate or amount</th>
+              <th>Rate (%) or amount ({sym})</th>
               <th />
             </tr>
           </thead>
           <tbody>
             {a.fees.map((f, i) => (
-              <FeeEditor key={`${state.tables.fees}:${f.id}`} f={f} i={i} dispatch={dispatch} />
+              <FeeEditor key={`${state.tables.fees}:${f.id}`} f={f} i={i} dispatch={dispatch} ccyId={ccyId} />
             ))}
           </tbody>
         </table>
@@ -188,7 +206,7 @@ export function Allocation({
               <tr>
                 <th>#</th>
                 <th>Name</th>
-                <th>Cash received</th>
+                <th>Cash received ({sym})</th>
                 <th>Scheme</th>
                 <th />
               </tr>
@@ -290,7 +308,7 @@ export function Allocation({
         <button
           type="button"
           disabled={!result || pending || isBlocked || refundsToCheck.length > 0}
-          onClick={() => result && download(`allocation_${cur}.csv`, allocationCsv(result))}
+          onClick={() => result && download(`allocation_${cur}.csv`, allocationCsv(result, cur))}
         >
           Export allocation CSV
         </button>
@@ -305,7 +323,7 @@ export function Allocation({
   )
 }
 
-function FeeEditor({ f, i, dispatch }: { f: FeeRow; i: number; dispatch: Dispatch<Action> }) {
+function FeeEditor({ f, i, dispatch, ccyId }: { f: FeeRow; i: number; dispatch: Dispatch<Action>; ccyId: string }) {
   const edit = (patch: Partial<Omit<FeeRow, 'id'>>) => dispatch({ type: 'editFee', index: i, rowId: f.id, patch })
   return (
     <tr>
@@ -333,7 +351,8 @@ function FeeEditor({ f, i, dispatch }: { f: FeeRow; i: number; dispatch: Dispatc
           className="cell num"
           label={`Fee ${i + 1} ${f.kind === 'percent' ? 'rate' : 'amount'}`}
           value={f.value}
-          placeholder={f.kind === 'percent' ? '3%' : '0.00'}
+          placeholder={f.kind === 'percent' ? 'e.g. 3' : 'e.g. 500.00'}
+          describedBy={f.kind === 'percent' ? undefined : ccyId}
           onCommit={(value) => edit({ value })}
         />
       </td>

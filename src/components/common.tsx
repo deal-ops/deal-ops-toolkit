@@ -1,5 +1,5 @@
 // Small building blocks shared by the modules. No money maths here (Rules D1): only display.
-import { useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { PendingContext } from './pending'
 import type { Check, InputError } from '../lib/outcome'
 import { GLOSSARY, type Term as TermName } from '../glossary'
@@ -20,6 +20,7 @@ export function Cell({
   className,
   placeholder,
   holdBlank,
+  describedBy,
 }: {
   value: string
   onCommit: (v: string) => void
@@ -27,6 +28,8 @@ export function Cell({
   className?: string
   placeholder?: string
   holdBlank?: boolean
+  /** id of an element describing the field, e.g. its currency */
+  describedBy?: string
 }) {
   const [draft, setDraft] = useState(value)
   const [shown, setShown] = useState(value)
@@ -59,6 +62,7 @@ export function Cell({
     <input
       className={className ?? 'cell'}
       aria-label={label}
+      aria-describedby={describedBy}
       value={draft}
       placeholder={placeholder}
       onChange={(e) => {
@@ -79,20 +83,63 @@ export function Cell({
   )
 }
 
-/** R-X-05: a term with a one-line explanation on hover (title) or on tap (expand). */
+/**
+ * R-X-05: a term with a one-line explanation on hover (title) or on tap (expand). The explanation floats under the "?"
+ * instead of splitting the sentence; Esc, a click elsewhere or moving focus away closes it, and it opens to the left
+ * when there is no room. Opening focuses the "?", so opening another explanation moves focus and closes this one:
+ * only one is open at a time (UI polish self-test #3).
+ */
 export function Term({ term, children }: { term: TermName; children?: ReactNode }) {
   const [open, setOpen] = useState(false)
+  // 'end' opens to the left; 'sheet' pins it to the bottom of the window where a scrolling table would clip it
+  const [place, setPlace] = useState<'start' | 'end' | 'sheet'>('start')
   const id = useId()
+  const root = useRef<HTMLSpanElement>(null)
+  const def = useRef<HTMLSpanElement>(null)
+  const button = useRef<HTMLButtonElement>(null)
+  useLayoutEffect(() => {
+    if (!open || !def.current) return
+    if (def.current.closest('.table-wrap')) setPlace('sheet')
+    else if (def.current.getBoundingClientRect().right > document.documentElement.clientWidth - 8) setPlace('end')
+  }, [open])
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [open])
+  const toggle = () => {
+    setPlace('start')
+    setOpen(!open)
+    // Safari does not focus a clicked button: without this, Esc would reach the tour instead of the explanation (Codex UI polish #1)
+    button.current?.focus()
+  }
   return (
-    <span className="term">
+    <span
+      className="term"
+      ref={root}
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || !open) return
+        e.stopPropagation() // closes the explanation, not the tour
+        setOpen(false)
+        button.current?.focus()
+      }}
+      onBlur={(e) => {
+        if (open && !root.current?.contains(e.relatedTarget as Node | null)) setOpen(false)
+      }}
+    >
       <span className="term-word" title={GLOSSARY[term]}>
         {children ?? term}
       </span>
-      <button type="button" className="term-q" aria-label={`What is ${term}?`} aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
+      <button type="button" className="term-q" ref={button} aria-label={`What is ${term}?`} aria-expanded={open} aria-controls={id} onClick={toggle}>
         ?
       </button>
       {open && (
-        <span className="term-def" id={id} role="note">
+        // focusable so a click on it keeps focus inside; a click must not reach a <label> around the term and pick its
+        // radio or field (UI polish self-test #4)
+        <span className={place === 'start' ? 'term-def' : `term-def ${place}`} id={id} role="note" ref={def} tabIndex={-1} onClick={(e) => e.preventDefault()}>
           {GLOSSARY[term]}
         </span>
       )}

@@ -1,8 +1,8 @@
-English snapshot of docs/01_PRD.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20.
+English snapshot of docs/01_PRD.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated at v1.1.0 on 2026-10-21.
 
 # Deal Ops Toolkit — Product Requirements Document (PRD)
 
-Version v0.7.3 (last revised 2026-10-20) · 2026-10-17 · Status: **Approved (2026-10-17)**, G0/G1 gates passed, freeze lifted (until G0 passed, no implementation code was written apart from the existing spike)
+Version v0.7.5 (last revised 2026-10-20) · 2026-10-17 · Status: **Approved (2026-10-17)**, G0/G1 gates passed, freeze lifted (until G0 passed, no implementation code was written apart from the existing spike)
 
 - Owner: Haixiang Yuan (product) · Development: Claude Code (following this document and the Technical Design)
 - v0.1 → v0.2: revised after Codex review round 1 (REWORK, 24 items) and the owner's decisions of 2026-10-16 (see the review summary).
@@ -76,7 +76,7 @@ Each requirement is split into separately verifiable acceptance points (numbered
 
 | ID | Acceptance point | Priority |
 |---|---|---|
-| R-DEAL-01 | Deal name, currency (GBP/EUR/USD), cut-off date (default today) | P0 |
+| R-DEAL-01 | Deal name, currency (GBP/EUR/USD), cut-off date (default today). The currency is the unit of every amount and nothing is converted: money input labels show the currency symbol; the currency select says nothing is converted; when amounts exist, changing the currency asks first and says how many amounts will be recorded in the new currency with unchanged values; USD is shown as `US$`; a successful import says which currency the amounts were read in (v0.7.5, decision 10) | P0 |
 | R-DEAL-02 | **The holding structure is fixed as SPV nominee** (nominee / bare trust): the UI shows "Holding structure: nominee (bare trust) — investors hold beneficial interests; fractional shares allowed" and offers no other option. Rules in C-ALL-5 | P0 |
 | R-DEAL-03 | **Basis for investor percentage fees**: deducted from the payment (default) / added on top of the investment. Rules in C-ALL-1 | P0 |
 | R-DEAL-04 | Minimum commitment (default 0; sample deal £1,000) | P0 |
@@ -117,7 +117,7 @@ Each requirement is split into separately verifiable acceptance points (numbered
 | R-ALL-07 | Company-paid fees are deducted from the money sent to the company; lead-paid fees are listed as an invoice | P0 |
 | R-ALL-08 | Cases where the deal cannot close (all reasons listed): no investors to allocate; company-paid fees exceed total investment; below minimum after scale-back; any check fails | P0 |
 | R-ALL-09 | Totals by SEIS / EIS / none (count, amount, shares), with the notice: SEIS shares must be issued **on a day before** the EIS shares; the same day is not allowed | P0 |
-| R-ALL-10 | Closing confirmation: a summary for the lead to confirm (totals, each fee, payment to company, refunds, per-investor detail), can be copied; CSV export | P0 |
+| R-ALL-10 | Closing confirmation: a summary for the lead to confirm (currency code, totals, each fee, payment to company, refunds, per-investor detail), can be copied; CSV export | P0 |
 | R-ALL-11 | "Carry to exit distribution as holdings" | P0 |
 
 ### 4.3 Module 3: Exit distribution (DIS)
@@ -139,7 +139,7 @@ Each requirement is split into separately verifiable acceptance points (numbered
 | R-X-01 | Load a fictional sample deal in one click; a guided mode highlights and explains typical problems in the three modules step by step | P0 |
 | R-X-02 | Privacy: deal data entered or imported is processed only locally in the browser, and the code never sends it anywhere; the page wording is "Your deal data is processed in your browser and never sent by this app. The hosting provider still receives normal page requests."; data is kept in this browser on this device, with a "Clear all data" button; deal data never appears in the URL | P0 |
 | R-X-03 | On first open and in the footer: not investment, tax or legal advice; results need human checking; not affiliated with any platform | P0 |
-| R-X-04 | At mobile width (375px) all steps of manual acceptance checklist M-01 to M-07 can be completed; light and dark themes supported | P1 |
+| R-X-04 | At mobile width (375px) all steps of manual acceptance checklist M-01 to M-07 can be completed; light and dark themes supported. The theme can be switched on the page: System (follows the device, default) / Light / Dark; the choice is kept only in this browser and "Clear all data" removes it too (v0.7.4, decision 9) | P1 |
 | R-X-05 | UI in English, in plain words; these terms have a one-line explanation in the UI (hover or expand): SPV, nominee / bare trust, beneficial interest, minimum commitment, scale-back, S/EIS, carry, hurdle, catch-up, tiered carry, waterfall | P0 |
 | R-X-06 | Feedback: one email link on the page, with the note "please do not send real investor information" | P0 |
 | R-X-07 | Modules pass snapshots: downstream data is replaced only when "Carry to …" is clicked; after an upstream change, downstream shows "Out of date, carry over again" | P0 |
@@ -151,9 +151,9 @@ Each requirement is split into separately verifiable acceptance points (numbered
 ### 5.0 Input rules (all modules)
 
 General formats:
-- **I-01 Amount**: a number, optionally with one symbol matching the deal currency and one minus sign (only fields that allow negatives accept a minus sign; see the field table); thousands commas must group in threes (`1,234.56` valid, `1,23` invalid); at most 2 decimal places; absolute value at most 1,000,000,000.
+- **I-01 Amount**: a number, optionally with one symbol matching the deal currency (GBP `£`, EUR `€`, USD `$` or `US$`) and one minus sign (only fields that allow negatives accept a minus sign; see the field table); thousands commas must group in threes (`1,234.56` valid, `1,23` invalid); at most 2 decimal places; absolute value at most 1,000,000,000.
 - **I-02 Percentage**: 0–100, at most 2 decimal places, `%` optional.
-- **I-03 Share price**: greater than 0, at most 6 decimal places, at most 1,000,000.
+- **I-03 Share price**: greater than 0, at most 6 decimal places, at most 1,000,000; optionally with the deal currency symbol; thousands commas follow I-01 (v0.7.5, decision 10).
 - **I-04 Date**: `YYYY-MM-DD` or `DD/MM/YYYY` (UK format); dates that do not exist are errors.
 - **I-05 Multiple** (for tiers): greater than 1, at most 2 decimal places.
 - **I-06 Years**: 0–50, at most 2 decimal places.
@@ -250,7 +250,7 @@ Let: total investor capital C (must be > 0), proceeds G, exit costs E, carry rat
 
 Holdings CSV: weights come only from `capital`; other columns in the file (such as `shares_display` included on export) are ignored. Exporting holdings and importing them again loses no precision.
 
-Aliases are compared after converting to lower case and trimming leading and trailing spaces. For headers with a currency label (`(£)`, `(€)`, `($)`, `gbp`, `eur`, `usd`), the labelled currency is first checked against the deal currency; **a mismatch is an import error**; only on a match is the label removed before comparing aliases (example: a GBP deal accepts `Amount (£)` and `amount gbp`, and rejects `Amount (€)`). The repository's `fixtures/` folder has a sample CSV for each file type, which is also the input for the import tests.
+Aliases are compared after converting to lower case and trimming leading and trailing spaces. For headers with a currency label (`(£)`, `(€)`, `($)`, `gbp`, `eur`, `usd`), the labelled currency is first checked against the deal currency; **a mismatch is an import error**; only on a match is the label removed before comparing aliases (example: a GBP deal accepts `Amount (£)` and `amount gbp`, and rejects `Amount (€)`; a USD label may also be written `(US$)`). All four import files may carry a `currency` column (alias `ccy`): a non-empty cell must be the deal currency's ISO code (any case), otherwise it is an import error naming the row; an empty cell means the deal currency (v0.7.5, decision 10). The repository's `fixtures/` folder has a sample CSV for each file type, which is also the input for the import tests.
 
 ---
 
@@ -290,6 +290,8 @@ Aliases are compared after converting to lower case and trimming leading and tra
 | 6 | Holding structure | ~~Optional, default SPV nominee; direct holding = whole shares + refund the remainder~~ (2026-10-16) → **SPV nominee only**: the nominee is on the investee company's register of members, investors hold beneficial interests and receive proof of them, and fractional shares are supported | 2026-10-17 |
 | 7 | Basis for investor percentage fees | Support both; default deducted from the payment | 2026-10-16 |
 | 8 | Visual and interaction style | The project's own visual design: open-licensed fonts (Inter, IBM Plex Mono) and its own design tokens; no third-party names, marks, trademarks, brand assets or page text; the page keeps a "not affiliated with any platform" notice | 2026-10-20 |
+| 9 | Light and dark switch | ~~Follow the device only, no manual switch~~ (the M4 visual plan (not published), item F, 2026-10-20) → **manual switch added**: System / Light / Dark, following the device by default, the choice kept only in this browser. Reason: trying the live site, the owner could not find where to turn dark mode on | 2026-10-20 |
+| 10 | Currency display, change and export | Following common practice (research: GOV.UK design system, Stripe and Wise exports, Microsoft localisation guidance, HMRC currency input): money labels name the currency; a currency change converts nothing and asks first when amounts exist (not locked, since a change usually corrects a wrong choice); every export row carries a `currency` column (ISO code, fixed column names for downstream templates); imports may carry a `currency` column, which is checked; the confirmation names the currency code; USD shown as `US$`; share prices accept thousands commas. No calculation changed | 2026-10-20 |
 
 ---
 
@@ -303,5 +305,7 @@ Aliases are compared after converting to lower case and trimming leading and tra
 | 2026-10-17 | v0.5 | Holdings weight basis: editing changes only that row, not the basis; CSV carries a basis column, lossless export and re-import; share count check applies only to the by-shares basis | Codex: READY AFTER FIXES (round 5, 2 minor) |
 | 2026-10-17 | v0.6 | Holdings export format; snapshot saves the share price; share price optional on import | Codex passed |
 | 2026-10-17 | v0.7.2 | Clarifications (definitions unchanged): exact hurdle calculation, floating-point exception removed; reference digit comparison by segment combination; export escaping by column type, reversed on import; non-English letters count as letters, only a–z converted to upper case; punctuation and hyphens in names treated as spaces. Source: M1 code review #1 #11 #12, self-test review #9 #10 #11 | Confirmed with M1 acceptance |
+| 2026-10-20 | v0.7.5 | R-DEAL-01, R-ALL-10, I-01, I-03, §5.5: currency display, confirmation before a currency change, `currency` column in exports, `currency` column checked on import, US$, thousands commas in share prices (decision 10). No calculation rule changed | **owner decision (2026-10-20)** |
+| 2026-10-20 | v0.7.4 | R-X-04: manual theme switch System / Light / Dark, following the device by default (decision 9). No calculation rule changed | **owner decision (2026-10-20)** |
 | 2026-10-20 | v0.7.3 | §2.2 non-goals and rule P6: visual and interaction style is an owner decision; still no third-party names, marks, trademarks, brand assets or page text (decision 8). No calculation rule changed | **owner decision (2026-10-20)** |
 | 2026-10-17 | v0.7 | Additions (owner agreed; no rules or numbers changed): holding capital = investment amount, excluding fees, written into R-DIS-01, the field table, C-DIS-7 and §5.5. Direct holding removed, SPV nominee only; holdings weighted by capital only (weight basis removed); three currencies and append import kept | Codex round 6 READY AFTER FIXES, fixes done; **owner approved 2026-10-17** (replied in conversation "Approved, please go ahead") |

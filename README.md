@@ -8,7 +8,7 @@ A browser tool for SPV deal operations. It takes one deal through three steps:
 
 Every figure is checked automatically, and the exit waterfall is explained step by step. Deal data is processed and saved in your browser; the app sends none of it anywhere.
 
-**Live:** https://deal-ops-toolkit.vercel.app (release `v1.0.0`)
+**Live:** https://deal-ops-toolkit.vercel.app (release `v1.1.0`)
 
 ## Try it
 
@@ -24,16 +24,16 @@ Every figure is checked automatically, and the exit waterfall is explained step 
 - **Self-checks on every calculation**, shown next to each result (for example, cash received = invested + fees + refunds for every investor). A failed blocker stops copying, exporting and the hand-off to the next step.
 - **An independent oracle.** A separate Python implementation (`scripts/oracle/`), written from the written rules only, agrees with the app field by field on the hand-calculated cases and on 1,100 generated cases. It also passes its own 139 checks.
 - **Every planned test runs.** `npm run coverage:check` fails unless every test-plan case due at the current milestone ran and passed.
-- **Mutation testing.** `npm run mutation` deliberately breaks the code in 107 places; each one must be caught by a test.
+- **Mutation testing.** `npm run mutation` deliberately breaks the code in 131 places; each one must be caught by a test.
 
-Counts at release (2026-10-20): 271 unit tests, 143 of 143 due test-plan cases, 22 end-to-end tests covering 9 of 9 planned end-to-end cases, 107 of 107 mutants caught.
+Counts at release v1.1.0 (2026-10-21): 284 unit tests, 149 of 149 due test-plan cases, 27 end-to-end tests covering 9 of 9 planned end-to-end cases, 131 of 131 mutants caught.
 
 ## How it was built
 
 The project owner owns the problem, the requirements, the calculation rules, the trade-offs and the review gates, and accepted each milestone. Claude Code drafted the documents for the owner's sign-off and wrote the implementation. Correctness rests on the tests, the oracle, mutation testing and cross-reviews rather than on trusting the code.
 
 - **Gates G0–G3:** requirements and design review (G0/G1), a review on every pull request (G2), and a release gate (G3) with the full manual checklist and the owner's explicit OK before production.
-- **One pull request per milestone** (M1 engines, M2 reconciliation and allocation screens, M3 exit screen and guided tour, M4 release), each with automated checks and Codex cross-review until it returned READY or READY AFTER FIXES with the fixes applied, with a self-test gate from M1 round 2 on. Counting the requirements and design reviews and the release-fix pull request, Codex ran 22 rounds. See the [review summary](docs/en/REVIEW_SUMMARY.md).
+- **One pull request per milestone** (M1 engines, M2 reconciliation and allocation screens, M3 exit screen and guided tour, M4 release), each with automated checks and Codex cross-review until it returned READY or READY AFTER FIXES with the fixes applied, with a self-test gate from M1 round 2 on. After release, the owner's review of the live site led to one more pull request (interface polish, a theme switch and currency handling, released as v1.1.0). Counting the requirements and design reviews, the release-fix and post-release pull requests, Codex ran 23 rounds. See the [review summary](docs/en/REVIEW_SUMMARY.md).
 
 ## Scope and limits
 
@@ -48,7 +48,7 @@ Deal data stays in the browser (memory and local storage) and is never put in a 
 
 ## Documents
 
-English snapshots of the project documents, taken at release v1.0.0. The Chinese originals are the source of truth and are kept in the development repository; the Chinese test plan is included because the coverage scripts read it.
+English snapshots of the project documents, taken at release v1.0.0 and updated at v1.1.0. The Chinese originals are the source of truth and are kept in the development repository; the Chinese test plan is included because the coverage scripts read it.
 
 - [Requirements (PRD)](docs/en/01_PRD.md)
 - [Technical design](docs/en/02_TECH_DESIGN.md)

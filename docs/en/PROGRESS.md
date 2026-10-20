@@ -1,4 +1,4 @@
-English snapshot of docs/PROGRESS.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20.
+English snapshot of docs/PROGRESS.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated at v1.1.0 on 2026-10-21.
 
 # Deal Ops Toolkit — progress record
 
@@ -14,6 +14,7 @@ This file records each stage: what was done, how it was verified, who reviewed i
 | M3 exit distribution UI + guided tour | ✅ Accepted and merged (PR #3) | 2026-10-20 |
 | M4 release preparation + visual refresh | ✅ Accepted and merged (PR #4) | 2026-10-20 |
 | G3 release v1.0.0 | ✅ Live at https://deal-ops-toolkit.vercel.app | 2026-10-20 |
+| Post-release improvements (PR #11) | ✅ Live as v1.1.0 | 2026-10-20 → 10-21 |
 
 ---
 
@@ -278,3 +279,41 @@ During the mutation check, one old mutant became equivalent because of the new s
 - Publish the code and English docs in a public repository. Done 2026-10-20: https://github.com/yuannh/deal-ops-toolkit
 
 **Links:** PR #5 in the private development repository · release notes `docs/RELEASE_NOTES.md` · review records: kept in the private development repository; summarised in `docs/en/REVIEW_SUMMARY.md`
+
+---
+
+## Post-release improvements: interface polish, theme switch, currency handling (PR #11)
+
+**Status:** ✅ Live as v1.1.0 · 2026-10-21 · after the owner replied "accept, merge", Claude recorded it and merged; after the G3 check the owner replied "accept, merge, OK to release", and Claude merged into `release` (`d588b56`) and tagged `v1.1.0`.
+
+**What was done**
+- **Interface problems the owner found on the live site:** the sidebar "Clear all data" confirmation was pushed out of the sidebar and cut in half; it now sits under its button, and focus moves into and out of it. Glossary explanations used to be inserted mid-sentence; they now float under the "?" (pinned to the bottom of the window in tables and on phones), close with Esc, a click elsewhere or focus leaving, and the target is 26px. Every select has the same arrow, and the two fee columns have the same width. Fee placeholders read "e.g. 3" so they no longer look like entered values. Fields in a row are bottom-aligned.
+- **Theme switch (PRD v0.7.4, R-X-04, decision 9):** System / Light / Dark on the page, following the device by default; the choice is kept only in this browser, and "Clear all data" returns it to System. Printing from dark mode stays black on white.
+- **Currency handling (PRD v0.7.5, decision 10):** the owner asked for professional practice to be assessed first; a research agent looked at GOV.UK, Stripe and Wise exports, Microsoft's localisation guidance and HMRC's currency input, then the owner chose. Money labels name the currency (screen readers hear it too); USD is shown as US$; changing the currency converts nothing and asks first when amounts exist, giving how many; every CSV export ends with a `currency` column; imports check a `currency` column when there is one; the confirmation's second line names the currency code; import messages say which currency amounts were read in; share prices accept thousands commas.
+- No calculation rule or figure changed.
+
+**How it was verified**
+- **Automated tests:** 284 unit tests pass; due cases 149/149 (new: TC-X-03, TC-IO-44, TC-IO-45, TC-IO-46, TC-DEAL-03, TC-ALL-30); 27 end-to-end tests (due 9/9), including 3 new for printing in dark mode and 1 each for the sidebar confirmation and an explanation inside a label; mutation check 131/131.
+- **Simulated acceptance (authorised by the owner):** 16 items on the Vercel preview with fresh browser storage, all passed: M-01 to M-04 and M-06 to M-08 match test plan §3; the currency-change confirmation (59 amounts, checked one by one), theme saving and clearing, explanations, the sidebar confirmation, and 375px width.
+
+**Reviews**
+
+| Round | Reviewer | Verdict | Findings |
+|---|---|---|---|
+| Self-test | Independent reviewer agent | READY AFTER FIXES | 1 major: printing from dark mode gave light text; 5 minor: focus, keyboard, clicks inside labels, the confirmation count, high-contrast mode |
+| 1 | Codex | READY AFTER FIXES | 3 minor: Esc in Safari, currency not heard by screen readers, focus in the currency confirmation |
+| Simulated acceptance (authorised by the owner) | Claude | All 16 items passed | — |
+
+One mutant can only be seen in a real browser (jsdom does not model label clicks); it is covered by an end-to-end test and was checked by hand. Another survived because its code had become redundant; the redundant code was removed. Prettier once rewrapped untouched lines in the calculation engines; that was reverted and the edits redone by hand.
+
+**Decisions (owner)**
+- Interface problems: "change all as you suggest, add the switch".
+- Currency: first "what is professional practice, review and assess", then after the research "as suggested".
+- PR #11: "simulate my acceptance", then after the results "accept, merge".
+
+**Open items / next steps**
+- **G3 release check (2026-10-21):** M-01 to M-11 on the `main` preview; M-11 ran a self-made 5-investor EUR deal from scratch and matched the hand calculation. The check found a test with its date pinned to 2026-10-20 that failed after midnight (the app was fine); a follow-up pull request (#13, in the private development repository) fixed it. Production smoke test: sample figures match test plan §3, 12 requests, all same-origin GETs, no console errors, security headers match technical design §4.
+- Next (owner agreed): refresh the public repository after a new pre-public check; replace the wiki's old screenshots with production ones.
+- The explanation placement (opening to the left, pinned to the bottom) has no automated test; it is checked by hand in manual items M-09 and M-10.
+
+**Links:** PR #11 in the private development repository · release notes `docs/RELEASE_NOTES.md` · review records: kept in the private development repository; summarised in `docs/en/REVIEW_SUMMARY.md`

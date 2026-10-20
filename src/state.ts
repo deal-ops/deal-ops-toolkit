@@ -1,7 +1,7 @@
 // Interface state (Tech Design §2): what the person typed is kept as text and parsed in derive.ts,
 // so a bad value is reported where it was typed and never silently becomes 0 (PRD I-07).
 // Hand-offs between modules are snapshots with version numbers (PRD R-X-07).
-import { MAX_PRICE_MICROS, plainMoney, type Currency } from './lib/money'
+import { MAX_PRICE_MICROS, plainMoney, trimAscii, type Currency } from './lib/money'
 import type { FeeBasis, FeeKind, FeePayer } from './lib/allocation'
 import {
   commitmentFingerprint,
@@ -504,6 +504,28 @@ function apply(s: AppState, a: Action): AppState {
 export const allocationStale = (s: AppState) => s.allocation.handoffVersion !== null && s.allocation.handoffVersion !== s.recVersion
 /** R-X-07: the holdings were handed off from an allocation that has changed since. */
 export const exitStale = (s: AppState) => s.exit.handoffVersion !== null && s.exit.handoffVersion !== s.allocVersion
+
+/** R-DEAL-01 (v0.7.5): how many amounts a change of currency would relabel; nothing is converted. Counting only, no money maths. */
+export function amountsEntered(s: AppState): number {
+  const filled = (v: string) => trimAscii(v) !== ''
+  const a = s.allocation
+  return (
+    [
+      s.deal.minimum,
+      ...s.commitments.map((c) => c.cashDue),
+      ...s.bank.map((l) => l.amount),
+      a.price,
+      a.cap,
+      ...a.fees.filter((f) => f.kind !== 'percent').map((f) => f.value),
+      ...a.investors.map((v) => v.received),
+      ...s.exit.holdings.map((h) => h.capital),
+      s.exit.proceeds,
+      s.exit.exitCosts,
+    ].filter(filled).length +
+    a.excess.length + // over-payments listed for refund at hand-off (UI polish self-test #5)
+    (s.exit.sharePriceMicros === null ? 0 : 1)
+  )
+}
 
 // ---------- local persistence (Tech Design §1: localStorage, try/catch, schema version) ----------
 

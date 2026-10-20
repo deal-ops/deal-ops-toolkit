@@ -51,7 +51,9 @@ const MISLEADING: Record<string, { field: string; hint: string }> = {
   wired: { field: 'capital', hint: 'Use a "capital" column: the amount invested, excluding fees.' },
 }
 
-const CCY_MARKS: Record<Currency, string[]> = { GBP: ['£', 'gbp'], EUR: ['€', 'eur'], USD: ['$', 'usd'] }
+const CCY_MARKS: Record<Currency, string[]> = { GBP: ['£', 'gbp'], EUR: ['€', 'eur'], USD: ['$', 'us$', 'usd'] }
+/** §5.5 (v0.7.5): an optional `currency` column in any import, checked row by row against the deal currency */
+const CURRENCY_COLUMN = ['currency', 'ccy']
 
 /** Fields treated as identifiers or parsed values: trimmed of ASCII whitespace on import (PRD I-09, CSV text review). */
 const IDENTIFIER_FIELDS: Record<keyof typeof SCHEMAS, string[]> = {
@@ -139,9 +141,15 @@ function readTable(text: string, kind: keyof typeof SCHEMAS, currency: Currency)
   const colOf: Record<string, number> = {}
   const ignored: string[] = []
   const misleading: { raw: string; field: string; hint: string }[] = []
+  let currencyCol: number | null = null
   header.forEach((raw, idx) => {
     const n = normaliseHeader(raw, currency)
     if ('error' in n) return errors.push({ where: 'header', message: n.error })
+    if (CURRENCY_COLUMN.includes(n.name)) {
+      if (currencyCol !== null) errors.push({ where: 'header', message: 'two currency columns' })
+      currencyCol = idx
+      return
+    }
     const field = spec.find((f) => f.key === n.name || f.aliases.includes(n.name))
     if (field) {
       if (field.key in colOf) errors.push({ where: 'header', message: `two columns map to "${field.key}"` })
@@ -160,6 +168,12 @@ function readTable(text: string, kind: keyof typeof SCHEMAS, currency: Currency)
   // Every row must have exactly as many cells as the header (review M1 #6).
   for (const r of body)
     if (r.cells.length !== header.length) errors.push({ where: `row ${r.line}`, message: `has ${r.cells.length} cells but the header has ${header.length} — check for unquoted commas` })
+  // a currency written on a row must be the deal's; blank means the deal's (§5.5, v0.7.5)
+  if (currencyCol !== null)
+    for (const r of body) {
+      const c = trimAscii(r.cells[currencyCol] ?? '')
+      if (c !== '' && c.toUpperCase() !== currency) errors.push({ where: `row ${r.line}, currency`, message: `"${c}" but this deal is in ${currency}` })
+    }
   // undo our own export escaping so exported files import unchanged (self-test #9)
   // remove our escape apostrophe before trimming, so a value that starts with a tab or CR is restored exactly (self-test R3 #5)
   const unescape = (v: string) => (/^'[=+\-@\t\r']/.test(v) ? v.slice(1) : v)

@@ -56,7 +56,7 @@ describe('M2 interface', () => {
       target: { value: 'name,reference,cash_due\nAnn Lee,AL-001,1000\nBo Chen,BC-002,2000\nCy Diaz,CD-003,3000' },
     })
     fireEvent.click(screen.getAllByRole('button', { name: 'Import pasted text' })[0])
-    expect(screen.getByText('Imported 3 investors.')).toBeTruthy()
+    expect(screen.getByText('Imported 3 investors. Amounts read as GBP.')).toBeTruthy()
     expect(values(/^Investor \d+ name$/)).toEqual(['Ann Lee', 'Bo Chen', 'Cy Diaz'])
     const pastedIds = values(/^Investor \d+ ID$/)
     expect(pastedIds.every((id) => id.length > 0)).toBe(true)
@@ -148,6 +148,65 @@ describe('M2 interface', () => {
     expect(screen.getByRole('note').textContent).toMatch(/special purpose vehicle/i)
   })
 
+  it('TC-X-01 the explanation closes with Esc or a click elsewhere, and only one is open at a time', () => {
+    render(<App storage={new MemoryStorage()} />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Deal settings' }))
+    click('What is SPV?')
+    fireEvent.keyDown(screen.getByRole('note'), { key: 'Escape' })
+    expect(screen.queryByRole('note')).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'What is SPV?' }))
+    click('What is SPV?')
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'What is beneficial interest?' }))
+    click('What is beneficial interest?')
+    expect(screen.getAllByRole('note').map((n) => n.textContent)).toEqual([expect.stringMatching(/economic rights/i)])
+    fireEvent.pointerDown(document.body)
+    expect(screen.queryByRole('note')).toBeNull()
+  })
+
+  it('TC-X-01 keyboard: opening a second explanation closes the first; moving focus away closes it (UI polish self-test #3)', () => {
+    render(<App storage={new MemoryStorage()} />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Deal settings' }))
+    click('What is SPV?') // a keyboard press: a click with no pointer-down
+    click('What is nominee / bare trust?')
+    expect(screen.getAllByRole('note').map((n) => n.textContent)).toEqual([expect.stringMatching(/bare trust|nominee/i)])
+    const q = screen.getByRole('button', { name: 'What is nominee / bare trust?' })
+    fireEvent.focusOut(q, { relatedTarget: screen.getByRole('button', { name: 'What is beneficial interest?' }) })
+    expect(screen.queryByRole('note')).toBeNull()
+  })
+
+  it('TC-X-01 Esc on an open explanation closes only the explanation, not the guided tour', () => {
+    render(<App storage={new MemoryStorage()} />)
+    click('I understand — take the 3-minute tour')
+    fireEvent.click(screen.getByRole('tab', { name: 'Deal settings' }))
+    click('What is SPV?')
+    // Esc goes wherever focus is: opening must put focus on the "?" itself, as Safari does not (Codex UI polish #1)
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'What is SPV?' }))
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    expect(screen.queryByRole('note')).toBeNull()
+    expect(screen.getByTestId('tour-card')).toBeTruthy()
+  })
+
+  it('TC-X-03 theme: System by default, Dark is remembered after reopening, Clear all data goes back to System', () => {
+    const storage = new MemoryStorage()
+    const pressed = () => screen.getAllByRole('button', { pressed: true }).map((b) => b.textContent)
+    const first = render(<App storage={storage} />)
+    const theme = within(screen.getByRole('group', { name: 'Theme' }))
+    expect(within(screen.getByRole('group', { name: 'Theme' })).getByRole('button', { pressed: true }).textContent).toBe('System')
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false)
+    fireEvent.click(theme.getByRole('button', { name: 'Dark' }))
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+    first.unmount()
+    document.documentElement.removeAttribute('data-theme')
+    render(<App storage={storage} />)
+    expect(pressed()).toContain('Dark')
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+    click('Clear all data')
+    click('Clear everything')
+    expect(within(screen.getByRole('group', { name: 'Theme' })).getByRole('button', { pressed: true }).textContent).toBe('System')
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false)
+    expect(storage.length).toBe(0)
+  })
+
   it('TC-X-02 the footer has a mailto feedback link with "Please don\'t send real investor information"', () => {
     render(<App storage={new MemoryStorage()} />)
     const link = screen.getByRole('link', { name: /feedback/i })
@@ -198,11 +257,11 @@ describe('M2 interface', () => {
     const box = () => screen.getAllByLabelText('Paste CSV text (first line is the header)')[0] as HTMLTextAreaElement
     fireEvent.change(box(), { target: { value: 'name,reference,cash_due\nAnn Lee,AL-001,1000' } })
     fireEvent.click(screen.getAllByRole('button', { name: 'Import pasted text' })[0])
-    expect(screen.getByText('Imported 1 investors.')).toBeTruthy()
+    expect(screen.getByText('Imported 1 investors. Amounts read as GBP.')).toBeTruthy()
     click('Clear all data')
     click('Clear everything')
     expect(box().value).toBe('')
-    expect(screen.queryByText('Imported 1 investors.')).toBeNull()
+    expect(screen.queryByText('Imported 1 investors. Amounts read as GBP.')).toBeNull()
     expect(screen.queryByText('Ann Lee')).toBeNull()
   })
 
@@ -240,7 +299,7 @@ describe('M2 interface', () => {
     click('Clear all data')
     click('Clear everything')
     await act(async () => finish('name,reference,cash_due\nZara Quinn,ZQ-001,1234.56'))
-    expect(screen.queryByText('Imported 1 investors.')).toBeNull()
+    expect(screen.queryByText('Imported 1 investors. Amounts read as GBP.')).toBeNull()
     expect(screen.queryByDisplayValue('Zara Quinn')).toBeNull()
     expect(storage.getItem(STORAGE_KEY) ?? '').not.toContain('Zara')
   })
@@ -335,8 +394,79 @@ describe('M2 interface', () => {
     click('Load sample deal')
     fireEvent.click(screen.getByRole('tab', { name: 'Deal settings' }))
     fireEvent.change(screen.getByDisplayValue('GBP'), { target: { value: 'EUR' } })
+    click('Change to EUR')
     fireEvent.click(screen.getByRole('tab', { name: /Reconciliation/ }))
     expect(screen.getByTestId('rec-totals').textContent).toContain('€114,840.00')
+  })
+
+  it('TC-DEAL-03 changing the currency over existing amounts asks first and converts nothing; a new deal changes at once', () => {
+    render(<App storage={new MemoryStorage()} />)
+    click('Load sample deal')
+    fireEvent.click(screen.getByRole('tab', { name: 'Deal settings' }))
+    expect(screen.getByText('Currency: amounts are not converted. Changing it only changes what they are in.')).toBeTruthy()
+    fireEvent.change(screen.getByDisplayValue('GBP'), { target: { value: 'EUR' } })
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cancel' })) // Codex UI polish #3
+    const ask = screen.getByRole('alertdialog').textContent!
+    // sample: minimum 1 + 12 investors' cash due + 16 bank lines + share price + cap + 1 fixed fee + exit proceeds + exit costs = 34
+    expect(ask).toMatch(/^34 amounts will be recorded in EUR instead of GBP, with the same values\. Nothing is converted\./)
+    click('Cancel')
+    expect(screen.getByDisplayValue('GBP')).toBeTruthy()
+    expect(document.activeElement).toBe(screen.getByDisplayValue('GBP'))
+    fireEvent.change(screen.getByDisplayValue('GBP'), { target: { value: 'EUR' } })
+    click('Change to EUR')
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(screen.getByLabelText('Minimum commitment')).toHaveProperty('value', '1000.00')
+    // after a hand-off: + 12 investors' cash received + 1 over-payment listed for refund (Hugo Bernard) (UI polish self-test #5)
+    fireEvent.click(screen.getByRole('tab', { name: /Reconciliation/ }))
+    for (const b of [
+      'Confirm Chloe Martin',
+      'Confirm Elena Rossi',
+      'Confirm Kavya Iyer',
+      'Mark t11 as not part of this deal',
+      'Mark t14 as not part of this deal',
+    ])
+      click(b)
+    click('Hand off to allocation')
+    fireEvent.click(screen.getByRole('tab', { name: 'Deal settings' }))
+    fireEvent.change(screen.getByDisplayValue('EUR'), { target: { value: 'GBP' } })
+    expect(screen.getByRole('alertdialog').textContent).toMatch(/^47 amounts will be recorded in GBP instead of EUR/)
+    click('Cancel')
+    fireEvent.click(screen.getByRole('tab', { name: /Reconciliation/ }))
+    expect(screen.getByTestId('rec-totals').textContent).toContain('€114,840.00')
+    cleanup()
+    render(<App storage={new MemoryStorage()} />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Deal settings' }))
+    fireEvent.change(screen.getByDisplayValue('GBP'), { target: { value: 'USD' } })
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(screen.getByDisplayValue('USD')).toBeTruthy()
+    expect(document.body.textContent).toContain('(US$, blank = none)')
+  })
+
+  it('R-DEAL-01 every money field names the deal currency and follows a change of currency (owner review 2026-10-20)', () => {
+    render(<App storage={new MemoryStorage()} />)
+    click('Load sample deal')
+    const tab = (name: RegExp) => fireEvent.click(screen.getByRole('tab', { name }))
+    const labels = () => document.body.textContent!
+    tab(/Deal settings/)
+    expect(labels()).toContain('(£, blank = none)')
+    fireEvent.change(screen.getByDisplayValue('GBP'), { target: { value: 'EUR' } })
+    click('Change to EUR')
+    expect(labels()).toContain('(€, blank = none)')
+    tab(/Reconciliation/)
+    for (const t of ['Cash due (€, including any fees charged to the investor)', 'Amount (€)']) expect(labels()).toContain(t)
+    tab(/Allocation/)
+    for (const t of ['Share price (€ per share)', 'Round cap (€, blank = no cap)', 'Rate (%) or amount (€)', 'Cash received (€)']) expect(labels()).toContain(t)
+    tab(/Exit distribution/)
+    for (const t of ['Exit proceeds (€)', 'Exit costs (€, blank = none)', 'Amount invested (€, excluding fees)']) expect(labels()).toContain(t)
+    expect(labels()).not.toContain('£')
+    // a screen reader hears the currency too: the fields' aria-label hides the visible label (Codex UI polish #2)
+    const described = (label: string) => document.getElementById(screen.getByLabelText(label).getAttribute('aria-describedby') ?? '')?.textContent
+    expect(['Exit proceeds', 'Exit costs'].map(described)).toEqual(['In EUR', 'In EUR'])
+    tab(/Allocation/)
+    expect(['Share price', 'Round cap', 'Fee 2 amount'].map(described)).toEqual(['In EUR', 'In EUR', 'In EUR'])
+    expect(screen.getByLabelText('Fee 1 rate').hasAttribute('aria-describedby')).toBe(false)
+    tab(/Deal settings/)
+    expect(described('Minimum commitment')).toBe('In EUR')
   })
 
   it('C-03 an internal error shows no figures and asks for a report', () => {
@@ -609,7 +739,10 @@ describe('M2 interface', () => {
     click('Load sample deal')
     click('Clear all data')
     expect(screen.getByRole('alertdialog').textContent).toContain('Clear all data in this browser? This cannot be undone.')
+    expect(screen.getByRole('button', { name: 'Clear all data' })).toHaveProperty('disabled', true)
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cancel' })) // UI polish self-test #2
     click('Cancel')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Clear all data' }))
     expect(screen.queryByRole('alertdialog')).toBeNull()
     expect(screen.getByTestId('deal-name').textContent).toContain('Northwind')
     click('Clear all data')
@@ -940,7 +1073,7 @@ describe('M4 visual refresh (the M4 visual plan (not published) v0.2)', () => {
     render(<App storage={new MemoryStorage()} />)
     click('I understand')
     paste(0, 'name,reference,cash_due\nAnn Lee,AL-001,1000\nBo Chen,BC-002,2000')
-    expect(screen.getByText('Imported 2 investors.').closest('details')!.open).toBe(true)
+    expect(screen.getByText('Imported 2 investors. Amounts read as GBP.').closest('details')!.open).toBe(true)
     paste(1, 'date,amount,payer,reference\n2026-10-10,1000,ANN LEE,AL-001')
     expect(screen.getByText(/^Replaced the statement with 1 line/).closest('details')!.open).toBe(true)
   })
@@ -970,7 +1103,7 @@ describe('M4 visual refresh (the M4 visual plan (not published) v0.2)', () => {
     const button = screen.getAllByRole('button', { name: 'Import pasted text' })[0]
     button.focus()
     fireEvent.click(button)
-    expect(screen.getByText('Imported 1 investors.')).toBeTruthy()
+    expect(screen.getByText('Imported 1 investors. Amounts read as GBP.')).toBeTruthy()
     expect(document.activeElement).toBe(button)
     expect(button.isConnected).toBe(true)
   })
@@ -994,9 +1127,9 @@ describe('M4 visual refresh (the M4 visual plan (not published) v0.2)', () => {
     render(<App storage={new MemoryStorage()} />)
     click('I understand')
     paste(0, 'name,reference,cash_due\nAnn Lee,AL-001,1000')
-    expect(screen.getByText('Imported 1 investors.')).toBeTruthy()
+    expect(screen.getByText('Imported 1 investors. Amounts read as GBP.')).toBeTruthy()
     click('Load sample deal')
-    expect(screen.queryByText('Imported 1 investors.')).toBeNull()
+    expect(screen.queryByText('Imported 1 investors. Amounts read as GBP.')).toBeNull()
     expect(sectionOf(/^Investors \(12\)$/).open).toBe(false)
   })
 

@@ -1,4 +1,4 @@
-English snapshot of docs/04_TEST_PLAN.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20.
+English snapshot of docs/04_TEST_PLAN.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated at v1.1.0 on 2026-10-21.
 
 The scripts that check test coverage read the Chinese file; this English file is for reading.
 
@@ -76,9 +76,13 @@ Amounts are GBP by default. Unless stated: share price £1.00, no minimum, no ca
 | TC-IO-41 | I-09 | Payer ` Bob `, bank reference `NW001` plus NBSP | Kept as is |
 | TC-IO-42 | I-09 | Bank file with CRLF then LF; bank file with LF then CRLF then CR; payer with CRLF inside quotes | All imported correctly by row; line breaks inside quotes kept as is |
 | TC-IO-43 | I-09 | Tax scheme is a single no-break space; amount with leading/trailing no-break spaces; date and amount with leading/trailing ordinary spaces | The first two are format errors; the third imports normally |
+| TC-IO-44 〔M4〕 | I-01, I-03 | USD deal: amounts `$5`, `US$5`, `US$1,250.50`; share prices `US$1,250.50`, `1,250.5`; GBP deal: amount `US$5`; share prices `1,25.5`, `£2.4137` | 500 / 500 / 125050; 1,250,500,000 / 1,250,500,000; error; error / 2,413,700 |
+| TC-IO-45 〔M4〕 | §5.5 | GBP deal: import commitments, bank statement, allocation investors and holdings, each with a `currency` column holding `GBP` / `gbp` / blank; then change one row to `EUR` | The first imports normally and `currency` is not an unknown column; the second imports nothing and reports that row's `currency` |
+| TC-IO-46 〔M4〕 | §6, §5.5 | The five exports of a EUR deal | Each ends with a `currency` column holding `EUR` on every row; the holdings export re-imports unchanged into the EUR deal and is refused with a `currency` error in a GBP deal |
 | TC-IO-20 〔M2〕 | R-REC-01.1 | Paste a 3-row roster in the UI; then in the table change a name, add a row, delete a row | Roster matches the actions; the new row gets an ID automatically |
 | TC-DEAL-01 | R-DEAL-01~04 | Create a new deal | Defaults: GBP, cut-off date = today, deduct from payment, minimum 0; holding structure shown as nominee (bare trust) with no other option; after switching to EUR, `£5` is rejected and `€5` is valid |
 | TC-DEAL-02 〔M2〕 | R-DEAL-01 | Change the deal name in the UI, then refresh the page | The new name is saved and shown (M1 review #13: the UI part of TC-DEAL-01 split out to M2) |
+| TC-DEAL-03 〔M4〕 | R-DEAL-01 | Load the sample, change the currency to EUR: cancel first, then confirm; in a new deal (no amounts) change to USD | A confirmation first, giving the number of amounts and saying nothing is converted; after Cancel still GBP; after confirming EUR with unchanged values; the new deal changes to USD at once with no confirmation; money labels show `€` / `US$`; results show `US$` |
 
 ### 2.2 Payment reconciliation (REC)
 Base roster: John Smith `NW-001` £5,000; Priya Shah `NW-002` £10,000; Tom Okafor `NW-003` £2,500; Ana Lima `NW-010` £1,000. Cut-off date 2026-10-12.
@@ -155,6 +159,7 @@ Base roster: John Smith `NW-001` £5,000; Priya Shah `NW-002` £10,000; Tom Okaf
 | TC-ALL-22 | C-ALL-7 | Share price £0.01; deduct from payment; 5 investor fees of 1% each; A received £0.53 | I 48p; each of 5 fees 1p; refund 0p (needs two retries) | 50p: each fee round(0.526)=1 → refund −2p; 49p: each round(0.516)=1 → −1p; 48p: each round(0.505)=1 → 0p |
 | TC-ALL-23 | R-ALL-09 | Sample deal | Sum of headcount, investment and shares across the SEIS / EIS / none groups equals the overall total | — |
 | TC-ALL-24 〔M2〕 | R-ALL-10 | Click "Copy confirmation" | Clipboard content matches the confirmation note in the UI | — |
+| TC-ALL-30 〔M4〕 | R-ALL-10 | The sample deal's confirmation note | The second line is `Currency: GBP` | — |
 | TC-ALL-25 | C-ALL-8 | Result of TC-ALL-05 | Shows the exact notice text specified in C-ALL-8 | — |
 | TC-ALL-26 | C-ALL-6 | Investor percentage fee with ID `__proto__`, A received £100, 3% | Invested £97, fee £3, refund £0 |
 | TC-ALL-27 | C-ALL-3 | Minimum £1; investor pays 0.01%; A received £1, B received £2; cap £2.97 | Blocked, list contains A (after scaling, A's target is unchanged, but on the commitment basis 99 ÷ 0.9999 ≈ 99.0099p < 100p) |
@@ -199,6 +204,7 @@ Unless stated: fixed mode; k 20%; h 0; c 0; exit costs 0; n 5; capital A £60,00
 | TC-DIS-25 | — | (removed in v0.7: share-count check under the share-count basis) | — | — |
 | TC-X-01 〔M2〕 | R-X-05 | Render the UI | All 11 terms listed in PRD R-X-05 have explanatory text | — |
 | TC-X-02 〔M2〕 | R-X-06 | Render the footer | Feedback link is `mailto:`, with "Please don't send real investor information" next to it | — |
+| TC-X-03 〔M4〕 | R-X-04 | Theme switch: default → choose Dark → reopen → Clear all data | Default is System and the page carries no theme mark; after Dark the page is marked dark and is still Dark after reopening; after "Clear all data" it is back to System and no theme is stored | — |
 
 ## 3. Sample deal (v0.2 conventions, for freezing)
 
@@ -268,7 +274,7 @@ PRs check only the items relevant to that PR; before release, check all of them.
 - [ ] M-06 Change share price to `abc` → no result, check shows "unavailable", export disabled
 - [ ] M-07 (Continue from M-03) Carry into exit; numbers match §3; switch to tiered mode; each step's explanation is understandable
 - [ ] M-08 Disclaimer on first open and in the footer; feedback email link opens; UI fully in English
-- [ ] M-09 All text readable in dark mode (P1)
+- [ ] M-09 All text readable in dark mode; the theme switch System / Light / Dark works in all three positions (P1)
 - [ ] M-10 Complete M-01 to M-03 on a phone (P1)
 - [ ] M-11 Walk through from scratch with a 5-person roster you make up yourself; note where you get stuck
 
@@ -279,6 +285,7 @@ PRs check only the items relevant to that PR; before release, check all of them.
 - Exit distribution: `investor_id, name, capital, shares_display, distribution, profit, multiple_excl_entry_fees` (for reading only, not for re-import)
 - **Export holdings** (re-importable): `investor_id, name, capital, shares_display, share_price`. On re-import only `capital` and `share_price` are used.
 - Amounts are decimals without a currency symbol (e.g. `1234.56`); negative values keep a leading minus sign; file names include the currency (e.g. `allocation_GBP.csv`).
+- Every export ends with a `currency` column holding the deal currency's ISO code (e.g. `GBP`) on each row; the column name is fixed and does not change with the currency (v0.7.5, decision 10).
 
 ## 7. Requirements traceability matrix
 
@@ -286,7 +293,7 @@ Note: this lists "which cases verify this requirement". An ID being present does
 
 | Requirement | Tests |
 |---|---|
-| R-DEAL-01 | TC-DEAL-01, TC-DEAL-02, TC-IO-07 |
+| R-DEAL-01 | TC-DEAL-01, TC-DEAL-02, TC-DEAL-03, TC-IO-07, TC-IO-44 |
 | R-DEAL-02 | TC-DEAL-01, TC-ALL-01, 05, 06, M-05 |
 | R-DEAL-03 | TC-DEAL-01, TC-ALL-02, 03, 08, TC-REC-23 |
 | R-DEAL-04 | TC-DEAL-01, TC-ALL-06, 07, 08, 10 |
@@ -317,7 +324,7 @@ Note: this lists "which cases verify this requirement". An ID being present does
 | R-ALL-07 | TC-ALL-15 |
 | R-ALL-08 | TC-ALL-10, 13, 14 |
 | R-ALL-09 | TC-ALL-18, 23 |
-| R-ALL-10 | TC-ALL-20, 24 |
+| R-ALL-10 | TC-ALL-20, 24, 30 |
 | R-ALL-11 | E2E-01b, E2E-02b |
 | R-DIS-01 | TC-DIS-21, 22, 23, 24, 26, TC-IO-17, E2E-01b |
 | R-DIS-02 | TC-DIS-03, 08 |
@@ -329,7 +336,7 @@ Note: this lists "which cases verify this requirement". An ID being present does
 | R-X-01 | E2E-05 |
 | R-X-02 | E2E-03, 04 |
 | R-X-03 | E2E-06, M-08 |
-| R-X-04 | E2E-07, M-09, M-10 (P1) |
+| R-X-04 | TC-X-03, E2E-07, M-09, M-10 (P1) |
 | R-X-05 | TC-X-01, M-08 |
 | R-X-06 | TC-X-02, E2E-06 |
 | R-X-07 | E2E-02a, E2E-02b |

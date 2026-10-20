@@ -42,9 +42,16 @@
   --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   color-scheme: light dark;
 }
+/* a choice made on the page (R-X-04, decision 9) also sets native controls and scrollbars */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #161616;
     --surface: #1e1e1e;
     --surface-2: #282828;
@@ -72,6 +79,34 @@
     --shadow-pop: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 5px 10px rgba(0, 0, 0, 0.2), 0 15px 40px rgba(0, 0, 0, 0.4);
     --card-glow: inset 0 0 16px rgba(56, 56, 56, 0.5);
   }
+}
+:root[data-theme='dark'] {
+  --bg: #161616;
+  --surface: #1e1e1e;
+  --surface-2: #282828;
+  --surface-3: #383838;
+  --text: #d1d5db;
+  --text-strong: #f9fafb;
+  --muted: #969696;
+  --border: #383838;
+  --border-strong: #767676;
+  --primary: #eab189;
+  --primary-text: #161616;
+  --accent: #eab189;
+  --accent-text: #161616;
+  --link: #eab189;
+  --ok: #5cc48e;
+  --ok-bg: #16261d;
+  --warn: #e8b04a;
+  --warn-bg: #2a2110;
+  --bad: #f08a7e;
+  --bad-bg: #2c1715;
+  --bad-fill: #f08a7e;
+  --bad-fill-text: #161616;
+  --info-bg: #1a2a20;
+  --code-bg: #282828;
+  --shadow-pop: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 5px 10px rgba(0, 0, 0, 0.2), 0 15px 40px rgba(0, 0, 0, 0.4);
+  --card-glow: inset 0 0 16px rgba(56, 56, 56, 0.5);
 }
 
 * {
@@ -251,6 +286,31 @@ textarea {
   font-size: 0.85rem;
   padding: 10px 12px;
 }
+/* one chevron for every select, drawn in the theme's colour, with its own room on the right */
+select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    right 17px center,
+    right 12px center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+/* high-contrast modes drop background images: give the native arrow back (UI polish self-test #6) */
+@media (forced-colors: active) {
+  select {
+    appearance: auto;
+    background-image: none;
+  }
+}
+select.cell,
+select.field {
+  padding-right: 34px;
+}
+select:hover {
+  border-color: var(--text);
+}
 input[type='radio'],
 input[type='checkbox'] {
   accent-color: var(--primary);
@@ -283,6 +343,31 @@ input[type='checkbox'] {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+.theme-switch {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+}
+.theme-switch button {
+  min-height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--muted);
+}
+.theme-switch button:hover:not(:disabled) {
+  background: none;
+  color: var(--text-strong);
+}
+.theme-switch button[aria-pressed='true'],
+.theme-switch button[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--text-strong);
+  color: var(--bg);
 }
 .privacy {
   flex-basis: 100%;
@@ -347,9 +432,14 @@ input[type='checkbox'] {
   }
   .side-actions {
     flex-direction: column;
+    flex-wrap: nowrap;
     align-items: stretch;
     margin-top: auto;
     padding-top: 16px;
+  }
+  /* a column must not wrap: the confirmation used to start a second column and be cut off by the sidebar */
+  .side-actions > .confirm-clear {
+    flex-basis: auto;
   }
   /* only the sidebar's own button: the confirmation's "Clear everything" keeps its solid fill (M4 self-test #1) */
   .side-actions > button.danger {
@@ -465,6 +555,8 @@ input[type='checkbox'] {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
+  /* fields in a row line up even when a label wraps or carries a "?" (owner review 2026-10-20) */
+  align-items: end;
 }
 .form-grid label {
   display: flex;
@@ -558,6 +650,10 @@ table.grid .total-row > td {
 }
 td > .cell.num {
   text-align: right;
+}
+table.grid.fees th:nth-child(2),
+table.grid.fees th:nth-child(3) {
+  width: 22%;
 }
 
 .badge {
@@ -816,26 +912,81 @@ ul.plain {
   text-decoration: underline dotted;
   text-underline-offset: 3px;
 }
-.term-q {
-  min-height: 0;
-  padding: 0 5px;
-  margin-left: 2px;
-  font-size: 0.7rem;
-  line-height: 1.3;
-  border-radius: 50%;
-  vertical-align: super;
+.term {
+  position: relative;
 }
+.term-q {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  padding: 0;
+  margin-left: 3px;
+  font-size: 12px;
+  line-height: 1;
+  border-radius: 50%;
+  vertical-align: text-bottom;
+}
+/* a 26px target around the 20px circle (WCAG 2.2 target size) */
+.term-q::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+}
+.term-q[aria-expanded='true'] {
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+}
+/* floats under the "?" instead of splitting the sentence */
 .term-def {
-  display: block;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  width: max-content;
+  max-width: min(360px, calc(100vw - 32px));
+  white-space: normal;
+  text-align: left;
+  text-transform: none;
   font-size: 13px;
   font-weight: normal;
   letter-spacing: normal;
   line-height: 1.5;
   color: var(--text);
-  background: var(--info-bg);
-  border-radius: var(--radius-field);
-  padding: 8px 12px;
-  margin: 6px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-box);
+  box-shadow: var(--shadow-pop);
+  padding: 10px 14px;
+}
+.term-def.end {
+  left: auto;
+  right: 0;
+}
+.term-def.sheet {
+  position: fixed;
+  top: auto;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  width: auto;
+  max-width: 560px;
+  margin: 0 auto;
+}
+@media (max-width: 600px) {
+  .term-def,
+  .term-def.end {
+    position: fixed;
+    top: auto;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    width: auto;
+    max-width: none;
+  }
 }
 
 .foot {
@@ -891,10 +1042,14 @@ details.section > summary h3 {
   --tour-glow: rgba(234, 177, 137, 0.35);
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --tour: #eab189;
     --tour-glow: rgba(234, 177, 137, 0.22);
   }
+}
+:root[data-theme='dark'] {
+  --tour: #eab189;
+  --tour-glow: rgba(234, 177, 137, 0.22);
 }
 html.touring {
   scroll-padding-bottom: 280px;
@@ -1033,6 +1188,10 @@ tr.tour-target > td:first-child {
 }
 .confirm-clear {
   flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
 }
 /* 375px: a bottom drawer that can fold to one line */
 @media (max-width: 600px) {
@@ -1078,7 +1237,8 @@ tr.tour-target > td:first-child {
 
 /* ---------- print: the page content only, on white ---------- */
 @media print {
-  :root {
+  /* (0,2,0) like the dark-token rules, and later in the file, so print colours win in every theme (UI polish self-test #1) */
+  :root:is(*, [data-theme]) {
     --bg: #ffffff;
     --surface: #ffffff;
     --surface-2: #ffffff;

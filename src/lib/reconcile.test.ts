@@ -176,9 +176,9 @@ describe('reconciliation', () => {
 
   it('TC-REC-22 ledger and chase-list exports', () => {
     const r = run([L(500_000, 'J SMITH', 'NW-001')])
-    expect(ledgerCsv(r).split(/\r?\n/)[0]).toBe('transaction_id,date,amount,payer,reference,status,investor_id,investor_name,decided_by')
-    expect(ledgerCsv(r).split(/\r?\n/)[1]).toMatch(/,5000\.00,J SMITH,NW-001,auto,john,John Smith,auto$/)
-    expect(chaseListCsv(r).split(/\r?\n/)[0]).toBe('investor_id,name,email,committed,received,difference,status')
+    expect(ledgerCsv(r, 'GBP').split(/\r?\n/)[0]).toBe('transaction_id,date,amount,payer,reference,status,investor_id,investor_name,decided_by,currency')
+    expect(ledgerCsv(r, 'GBP').split(/\r?\n/)[1]).toMatch(/,5000\.00,J SMITH,NW-001,auto,john,John Smith,auto,GBP$/)
+    expect(chaseListCsv(r, 'GBP').split(/\r?\n/)[0]).toBe('investor_id,name,email,committed,received,difference,status,currency')
   })
 
   it('TC-REC-23 on-top fees: cash due includes the fee and flows through to £10,000 invested', () => {
@@ -218,7 +218,7 @@ describe('reconciliation', () => {
 
   it('TC-REC-27 the chase list holds only short and unpaid investors', () => {
     const r = run(SAMPLE_BANK, {}, SAMPLE_COMMITMENTS, '2026-10-16')
-    const names = chaseListCsv(r).split(/\r?\n/).slice(1).map((l) => l.split(',')[1])
+    const names = chaseListCsv(r, 'GBP').split(/\r?\n/).slice(1).map((l) => l.split(',')[1])
     expect(names).toEqual(['Chloe Martin', 'David Kim', 'Elena Rossi', 'James Whitfield', 'Kavya Iyer'])
   })
 

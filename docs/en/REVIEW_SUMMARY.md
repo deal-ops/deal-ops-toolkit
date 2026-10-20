@@ -1,6 +1,6 @@
 # Review summary
 
-How each stage of Deal Ops Toolkit was reviewed before it was accepted, written on 2026-10-20 at release v1.0.0. The raw review output and the item-by-item triage notes stay in the private development repository; this summary replaces them in the public one.
+How each stage of Deal Ops Toolkit was reviewed before it was accepted, written on 2026-10-20 at release v1.0.0 and updated on 2026-10-21 at release v1.1.0. The raw review output and the item-by-item triage notes stay in the private development repository; this summary replaces them in the public one.
 
 ## How a review works
 
@@ -20,7 +20,8 @@ How each stage of Deal Ops Toolkit was reviewed before it was accepted, written 
 | M3 exit distribution screen and guided tour | 4 | READY AFTER FIXES ×3, READY | 1 |
 | M4 release preparation and visual refresh | 1 | READY AFTER FIXES | 1 |
 | G3 release fixes | 1 | READY AFTER FIXES | 1 |
-| **Total** | **22** | | |
+| Post-release improvements (v1.1.0) | 1 | READY AFTER FIXES | 1 |
+| **Total** | **23** | | |
 
 One further M4 Codex run stopped at the review service's usage limit without output. It is not counted; the review was run again.
 
@@ -38,6 +39,10 @@ One further M4 Codex run stopped at the review service's usage limit without out
 
 **G3 release fixes (1 round).** The release check's manual case M-11 (a five-investor deal built from scratch) found three usability problems: an import message hidden by a section that folded itself, the open module tab cut off on phones, and no starting hint on an empty allocation. The self-test reviewer found that adding the first row by hand still folded the section; Codex found that the first fix moved keyboard focus away from the import button. A second walk through the checklist found an import message that stayed on screen after the sample replaced the list. All were fixed with tests.
 
+**Post-release improvements, v1.1.0 (1 round).** The owner reviewed the live site and asked for interface fixes, a light/dark switch and, after a review of common practice, professional currency handling (no conversion on a change of currency, the currency named in labels, exports and the closing confirmation). The self-test reviewer found one important issue (printing from dark mode gave light text on white) and five minor ones (keyboard focus around two confirmations, explanations opened from the keyboard, a click on an explanation inside a label changing a radio choice, an incomplete count in the currency confirmation, high-contrast mode). Codex found three minor ones (Esc in Safari, the currency not heard by screen readers, focus in the currency confirmation). All were fixed with tests; the label-click fix is proven by an end-to-end test because the unit-test environment does not model label clicks. No calculation rule or figure changed.
+
 ## Counts at release
 
 From the release commit on 2026-10-20: 271 unit tests pass; all 143 test-plan cases due at release ran and passed (the other 5 IDs were removed in PRD v0.7); 22 end-to-end tests pass, covering all 9 planned end-to-end cases; 107 of 107 deliberate breakages are caught; the Python oracle passes its own 139 checks and agrees with the app field by field on the hand-calculated cases and on 1,100 generated cases.
+
+From `main` on 2026-10-21, released as v1.1.0: 284 unit tests pass; all 149 test-plan cases due ran and passed; 27 end-to-end tests pass, covering all 9 planned end-to-end cases; 131 of 131 deliberate breakages are caught; the oracle's self-check passes 139 of 139.

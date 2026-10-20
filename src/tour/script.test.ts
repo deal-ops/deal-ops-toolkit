@@ -105,7 +105,8 @@ describe('guided tour script', () => {
   })
 
   it('R-X-01 starting the tour only asks first when there is something to lose', () => {
-    expect(nothingToLose(base)).toBe(true)
+    // a fresh page is one made today: `base` is pinned to 2026-10-20, so it only counts as fresh on that day (G3 v1.1.0 check)
+    expect(nothingToLose(initialState())).toBe(true)
     expect(nothingToLose(reducer(base, { type: 'loadSample' }))).toBe(true)
     expect(nothingToLose(stateAt(3, base))).toBe(false) // decisions made
     expect(nothingToLose(reducer(base, { type: 'addCommitment' }))).toBe(false)

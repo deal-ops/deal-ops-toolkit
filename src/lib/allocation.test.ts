@@ -141,12 +141,12 @@ describe('closing allocation', () => {
       '- James Whitfield: not in this close, refund £0.00',
     ])
       expect(text).toContain(line)
-    const csvRows = allocationCsv(r).split(/\r?\n/)
+    const csvRows = allocationCsv(r, 'GBP').split(/\r?\n/)
     expect(csvRows).toHaveLength(13)
-    expect(csvRows[1]).toBe('c01,Amelia Hart,SEIS,10000.00,9700.00,4018.726436,300.00,300.00,0.00,4018,9698.24,allocated')
-    const header = allocationCsv(r).split(/\r?\n/)[0]
+    expect(csvRows[1]).toBe('c01,Amelia Hart,SEIS,10000.00,9700.00,4018.726436,300.00,300.00,0.00,4018,9698.24,allocated,GBP')
+    const header = allocationCsv(r, 'GBP').split(/\r?\n/)[0]
     expect(header).toBe(
-      'investor_id,name,scheme,received,invested,units,fee_Platform fee,fees_total,refund,seis_eis_claimable_shares,seis_eis_claimable_amount,status',
+      'investor_id,name,scheme,received,invested,units,fee_Platform fee,fees_total,refund,seis_eis_claimable_shares,seis_eis_claimable_amount,status,currency',
     )
   })
 

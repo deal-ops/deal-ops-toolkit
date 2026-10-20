@@ -104,11 +104,11 @@ describe('exit distribution', () => {
   })
 
   it('TC-DIS-15 distribution CSV columns, rows and totals', () => {
-    const lines = distributionCsv(run({}), null).split(/\r?\n/)
+    const lines = distributionCsv(run({}), null, 'GBP').split(/\r?\n/)
     expect(lines).toEqual([
-      'investor_id,name,capital,shares_display,distribution,profit,multiple_excl_entry_fees',
-      'A,A,60000.00,—,156000.00,96000.00,2.60',
-      'B,B,40000.00,—,104000.00,64000.00,2.60',
+      'investor_id,name,capital,shares_display,distribution,profit,multiple_excl_entry_fees,currency',
+      'A,A,60000.00,—,156000.00,96000.00,2.60,GBP',
+      'B,B,40000.00,—,104000.00,64000.00,2.60,GBP',
     ])
   })
 
@@ -188,6 +188,6 @@ describe('exit distribution', () => {
     const imported = importHoldings('name,capital\nA,0.19\n', 'GBP')
     expect(imported.ok && imported.sharePriceMicros).toBe(null)
     expect(sharesDisplay(19, null)).toBe('—')
-    expect(holdingsCsv([{ id: 'A', name: 'A', capital: 19 }], null)).toContain('A,A,0.19,—,')
+    expect(holdingsCsv([{ id: 'A', name: 'A', capital: 19 }], null, 'GBP')).toContain('A,A,0.19,—,')
   })
 })

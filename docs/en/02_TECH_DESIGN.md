@@ -1,4 +1,4 @@
-English snapshot of docs/02_TECH_DESIGN.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20.
+English snapshot of docs/02_TECH_DESIGN.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated at v1.1.0 on 2026-10-21.
 
 # Deal Ops Toolkit — Technical design
 
@@ -22,7 +22,7 @@ Version v0.7.1 (last revised 2026-10-20) · 2026-10-17 · Status: **Approved (20
 | Result type | Every engine returns `{ ok: true, result, checks } \| { ok: false, errors, internal? }` | PRD C-03: invalid input gives no result, so a check can never be mistaken for a pass | Throwing exceptions; returning partial results |
 | CSV | papaparse; **parse errors are not dropped**, they are reported with row number and column name; imports are atomic | Codex #14 | Writing our own parser |
 | Data between modules | **Snapshot model**: "Hand off" copies the data and records the source version number; after an upstream change, the downstream module compares version numbers and shows "out of date" | PRD R-X-07; Codex #15 | Live linking |
-| Local storage | localStorage, key `deal-ops-toolkit:v1`; reads and writes wrapped in try/catch; the structure carries a schema version | Keeps working normally when storage fails in private browsing | IndexedDB |
+| Local storage | localStorage, key `deal-ops-toolkit:v1`; reads and writes wrapped in try/catch; the structure carries a schema version. The theme choice is stored on its own under key `deal-ops-toolkit:theme` (`light` / `dark`; nothing stored when following the device) and applied through `<html data-theme>`, not inline styles | Keeps working normally when storage fails in private browsing | IndexedDB |
 | Tests | Vitest (unit + invariants); independent Python recalculation (standard library `fractions`/`decimal` only); Playwright (added when the first UI path appears, i.e. M2) | See the test plan | Jest |
 | UI unit tests (new dependency in M2) | `@testing-library/react` + `@testing-library/dom` + `jsdom`; test files declare `@vitest-environment jsdom` at the top | User-action cases (TC-IO-20, TC-DEAL-02, TC-ALL-24, TC-X-01/02) run directly in Vitest and count towards the TC coverage check; development dependency only, not shipped in the page | Putting everything in Playwright (slow, and not in the TC coverage report) |
 | End-to-end (new dependency in M2) | `@playwright/test`, Chromium only; runs against the **production build**; `vite preview` reads `vercel.json` and adds the same security response headers, so a CSP violation fails the test; `scripts/check-e2e.mjs` reads the report and checks that every due E2E case ran and passed | Test plan §4 | Cypress |

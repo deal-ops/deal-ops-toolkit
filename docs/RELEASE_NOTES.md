@@ -2,6 +2,24 @@
 
 Rule P9: only what is implemented, tested and deployed is listed. Each line names the requirement and the tests that cover it.
 
+## v1.1.0 — released 2026-10-21
+
+Live at https://deal-ops-toolkit.vercel.app (build `index-DLntVfU4.js`). The tag `v1.1.0` and the release commit `d588b56` are in the private development repository. Production smoke test on 2026-10-21: the sample deal's figures match Test Plan §3 and the confirmation names `Currency: GBP`; a Dark choice survives a reload; 12 requests, all same-origin GETs without bodies or query strings; no console errors; the security headers match Tech Design §4.
+
+Changes since v1.0.0 after the owner's review of the live site (PR #11 in the private development repository; PRD v0.7.4 and v0.7.5). No calculation rule or figure changed. Checked on `main` on 2026-10-21: 284 unit tests pass; all 149 test-plan cases due at M4 ran and passed; 9 of 9 end-to-end cases (27 tests); 131 of 131 deliberate code breakages caught; the Python oracle's self-check 139 of 139.
+
+**Currency** (R-DEAL-01, R-ALL-10, I-01, I-03, §5.5; decision 10)
+- Every money field names the deal currency (£ / € / US$), also for screen readers; US dollars are shown as US$, and `$` or `US$` is accepted on input.
+- Changing the currency converts nothing: the page says so, and when amounts exist it asks first, giving how many amounts will be recorded in the new currency.
+- Every CSV export ends with a `currency` column (ISO code on each row); imports accept an optional `currency` column and refuse a different currency.
+- The closing confirmation names the currency code; import messages say which currency the amounts were read in; share prices accept thousands commas.
+- Tests: TC-IO-44, TC-IO-45, TC-IO-46, TC-DEAL-03, TC-ALL-30.
+
+**Appearance and interaction** (R-X-04, R-X-05; decision 9)
+- A System / Light / Dark switch, following the device by default and kept only in this browser; "Clear all data" returns it to System. Printing stays black on white in every theme (TC-X-03, E2E-07).
+- Glossary explanations open under their "?" without splitting the sentence, close with Esc, a click elsewhere or moving focus away, and stay inside the window on a phone (TC-X-01, E2E-01b).
+- The "Clear all data" confirmation fits the sidebar and takes keyboard focus (E2E-04); one arrow style for every select, with the native arrow in high-contrast mode; fee placeholders that do not look like values; fields in a row line up.
+
 ## v1.0.0 — released 2026-10-20
 
 Live at https://deal-ops-toolkit.vercel.app (build `index-Dav9BeIm.js`). The tag `v1.0.0` and the release commit `d54c903` are in the private development repository; the public repository is a snapshot of that release. Checked on the release commit on 2026-10-20: 271 unit tests pass; all 143 test-plan cases due at M4 ran and passed (the other 5 IDs were removed in PRD v0.7); 9 of 9 end-to-end cases (22 tests); 107 of 107 deliberate code breakages caught by the tests; the Python oracle's self-check 139 of 139. Production smoke test: the sample deal's figures match Test Plan §3, only same-origin static files are requested, and the security headers match Tech Design §4.

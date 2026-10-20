@@ -130,7 +130,7 @@ describe('input rules and CSV', () => {
       { id: 'B', name: 'B', capital: 10 },
     ]
     const price = 100_000_000_000
-    const back = importHoldings(holdingsCsv(rows, price), 'GBP')
+    const back = importHoldings(holdingsCsv(rows, price, 'GBP'), 'GBP')
     if (!back.ok) throw new Error(JSON.stringify(back.errors))
     expect(back.rows).toEqual(rows)
     expect(back.sharePriceMicros).toBe(price)

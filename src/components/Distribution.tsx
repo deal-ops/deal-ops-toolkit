@@ -1,6 +1,6 @@
 // PRD §4.3 exit distribution: holdings, exit terms, step-by-step waterfall, per-investor results, exports.
-import type { Dispatch } from 'react'
-import { formatMoney, formatPrice } from '../lib/money'
+import { useId, type Dispatch } from 'react'
+import { SYMBOL, formatMoney, formatPrice } from '../lib/money'
 import type { InputError, Outcome } from '../lib/outcome'
 import { blocked } from '../lib/outcome'
 import type { WaterfallResult } from '../lib/waterfall'
@@ -34,6 +34,8 @@ export function Distribution({
   const cur = state.deal.currency
   const x = state.exit
   const m = (v: number) => formatMoney(v, cur)
+  const sym = SYMBOL[cur] // money fields say which currency they are in (owner review 2026-10-20)
+  const ccyId = useId()
   const [importMsg, setImportMsg] = useListMessage<{ ok: true; text: string } | { ok: false; errors: InputError[] }>(state.tables.holdings)
   const result = outcome?.ok ? outcome.result : null
   const internal = outcome !== null && !outcome.ok && Boolean(outcome.internal)
@@ -49,7 +51,10 @@ export function Distribution({
     if (!r.ok) return setImportMsg({ ok: false, errors: r.errors }, false)
     dispatch({ type: 'replaceHoldings', rows: r.rows.map(holdingRow), sharePriceMicros: r.sharePriceMicros })
     setImportMsg(
-      { ok: true, text: `Imported ${r.rows.length} holdings.${r.ignoredColumns.length ? ` Ignored columns: ${r.ignoredColumns.join(', ')}.` : ''}` },
+      {
+        ok: true,
+        text: `Imported ${r.rows.length} holdings. Amounts read as ${cur}.${r.ignoredColumns.length ? ` Ignored columns: ${r.ignoredColumns.join(', ')}.` : ''}`,
+      },
       true,
     )
   }
@@ -101,7 +106,7 @@ export function Distribution({
               <tr>
                 <th>#</th>
                 <th>Name</th>
-                <th>Amount invested (excluding fees)</th>
+                <th>Amount invested ({sym}, excluding fees)</th>
                 <th className="num">Shares</th>
                 <th />
               </tr>
@@ -148,7 +153,7 @@ export function Distribution({
           <button
             type="button"
             disabled={!holdingList || pending}
-            onClick={() => holdingList && download(`holdings_${cur}.csv`, holdingsCsv(holdingList, x.sharePriceMicros))}
+            onClick={() => holdingList && download(`holdings_${cur}.csv`, holdingsCsv(holdingList, x.sharePriceMicros, cur))}
           >
             Export holdings CSV
           </button>
@@ -156,14 +161,18 @@ export function Distribution({
       </Section>
 
       <h3>Exit</h3>
+      {/* the currency in the accessible description of money fields: their aria-label hides the visible label (Codex UI polish #2) */}
+      <span id={ccyId} hidden>
+        In {cur}
+      </span>
       <div className="form-grid">
         <label>
-          Exit proceeds
-          <Cell className="field" label="Exit proceeds" value={x.proceeds} onCommit={(v) => set({ proceeds: v })} />
+          Exit proceeds ({sym})
+          <Cell className="field" label="Exit proceeds" describedBy={ccyId} value={x.proceeds} onCommit={(v) => set({ proceeds: v })} />
         </label>
         <label>
-          Exit costs (blank = none)
-          <Cell className="field" label="Exit costs" value={x.exitCosts} onCommit={(v) => set({ exitCosts: v })} />
+          Exit costs ({sym}, blank = none)
+          <Cell className="field" label="Exit costs" describedBy={ccyId} value={x.exitCosts} onCommit={(v) => set({ exitCosts: v })} />
         </label>
         <label>
           Years held (up to 2 decimals)
@@ -277,7 +286,7 @@ export function Distribution({
         <button
           type="button"
           disabled={!result || pending || isBlocked}
-          onClick={() => result && download(`distribution_${cur}.csv`, distributionCsv(result, x.sharePriceMicros))}
+          onClick={() => result && download(`distribution_${cur}.csv`, distributionCsv(result, x.sharePriceMicros, cur))}
         >
           Export distribution CSV
         </button>

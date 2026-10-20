@@ -41,7 +41,7 @@ describe('self-test regressions', () => {
 
   it('TC-IO-30 our own export imports back unchanged, even with formula-like names (#9)', () => {
     const rows = [{ id: '-7', name: '+Ann', capital: 100 }]
-    const back = importHoldings(holdingsCsv(rows, null), 'GBP')
+    const back = importHoldings(holdingsCsv(rows, null, 'GBP'), 'GBP')
     expect(back.ok && back.rows).toEqual(rows)
   })
 
@@ -93,7 +93,7 @@ describe('Codex M1 round 2 regressions', () => {
       { id: "'a", name: "'+Ann", capital: 100 },
       { id: 'b', name: '+Bob', capital: 200 },
     ]
-    const back = importHoldings(holdingsCsv(rows, null), 'GBP')
+    const back = importHoldings(holdingsCsv(rows, null, 'GBP'), 'GBP')
     expect(back.ok && back.rows).toEqual(rows)
   })
 
@@ -170,7 +170,7 @@ describe('Codex M1 round 3 regressions', () => {
       { id: 'a', name: '\tAnn', capital: 100 },
       { id: 'b', name: ' Bob ', capital: 200 },
     ]
-    const back = importHoldings(holdingsCsv(rows, null), 'GBP')
+    const back = importHoldings(holdingsCsv(rows, null, 'GBP'), 'GBP')
     expect(back.ok && back.rows).toEqual(rows)
   })
 })

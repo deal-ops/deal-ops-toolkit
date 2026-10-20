@@ -5,10 +5,11 @@ import type { ReconcileResult } from './reconcile'
 import type { AllocationResult } from './allocation'
 import type { Holding, WaterfallResult } from './waterfall'
 
-export function ledgerCsv(r: ReconcileResult): string {
+/** Every export ends with the deal currency's ISO code on each row; column names stay fixed (Test Plan §6, v0.7.5). */
+export function ledgerCsv(r: ReconcileResult, currency: Currency): string {
   const names = new Map(r.commitments.map((c) => [c.commitment.id, c.commitment.name]))
   return toCsv(
-    ['transaction_id', 'date', 'amount', 'payer', 'reference', 'status', 'investor_id', 'investor_name', 'decided_by'],
+    ['transaction_id', 'date', 'amount', 'payer', 'reference', 'status', 'investor_id', 'investor_name', 'decided_by', 'currency'],
     r.lines.map((l) => [
       l.line.txnId ?? '',
       l.line.date,
@@ -19,23 +20,24 @@ export function ledgerCsv(r: ReconcileResult): string {
       l.assignedTo ?? '',
       l.assignedTo ? names.get(l.assignedTo) ?? '' : '',
       l.status === 'auto' ? 'auto' : l.status === 'confirmed' || l.status === 'rejected' ? 'person' : '',
+      currency,
     ]),
     ['amount'],
   )
 }
 
 /** Partial and outstanding only (TC-REC-27). */
-export function chaseListCsv(r: ReconcileResult): string {
+export function chaseListCsv(r: ReconcileResult, currency: Currency): string {
   return toCsv(
-    ['investor_id', 'name', 'email', 'committed', 'received', 'difference', 'status'],
+    ['investor_id', 'name', 'email', 'committed', 'received', 'difference', 'status', 'currency'],
     r.commitments
       .filter((c) => c.status === 'partial' || c.status === 'outstanding')
-      .map((c) => [c.commitment.id, c.commitment.name, c.commitment.email, plainMoney(c.commitment.cashDue), plainMoney(c.received), plainMoney(c.difference), c.status]),
+      .map((c) => [c.commitment.id, c.commitment.name, c.commitment.email, plainMoney(c.commitment.cashDue), plainMoney(c.received), plainMoney(c.difference), c.status, currency]),
     ['committed', 'received', 'difference'],
   )
 }
 
-export function allocationCsv(r: AllocationResult): string {
+export function allocationCsv(r: AllocationResult, currency: Currency): string {
   const investorFees = r.feeTotals.filter((f) => f.payer === 'investors')
   return toCsv(
     [
@@ -51,6 +53,7 @@ export function allocationCsv(r: AllocationResult): string {
       'seis_eis_claimable_shares',
       'seis_eis_claimable_amount',
       'status',
+      'currency',
     ],
     r.rows.map((x) => [
       x.id,
@@ -65,14 +68,15 @@ export function allocationCsv(r: AllocationResult): string {
       x.participating && x.scheme !== 'none' ? x.claimableShares : '',
       x.participating && x.scheme !== 'none' ? plainMoney(x.claimableAmount) : '',
       x.participating ? (x.scaledBack ? 'scaled-back' : 'allocated') : x.exclusion ?? '',
+      currency,
     ]),
     ['received', 'invested', 'units', ...investorFees.map((f) => `fee_${f.label}`), 'fees_total', 'refund', 'seis_eis_claimable_shares', 'seis_eis_claimable_amount'],
   )
 }
 
-export function distributionCsv(r: WaterfallResult, sharePriceMicros: number | null): string {
+export function distributionCsv(r: WaterfallResult, sharePriceMicros: number | null, currency: Currency): string {
   return toCsv(
-    ['investor_id', 'name', 'capital', 'shares_display', 'distribution', 'profit', 'multiple_excl_entry_fees'],
+    ['investor_id', 'name', 'capital', 'shares_display', 'distribution', 'profit', 'multiple_excl_entry_fees', 'currency'],
     r.rows.map((x) => [
       x.id,
       x.name,
@@ -81,16 +85,17 @@ export function distributionCsv(r: WaterfallResult, sharePriceMicros: number | n
       plainMoney(x.distribution),
       plainMoney(x.profit),
       (x.multiple100 / 100).toFixed(2),
+      currency,
     ]),
     ['capital', 'shares_display', 'distribution', 'profit', 'multiple_excl_entry_fees'],
   )
 }
 
 /** Reusable holdings export; re-import takes only capital and share_price. */
-export function holdingsCsv(rows: Holding[], sharePriceMicros: number | null): string {
+export function holdingsCsv(rows: Holding[], sharePriceMicros: number | null, currency: Currency): string {
   return toCsv(
-    ['investor_id', 'name', 'capital', 'shares_display', 'share_price'],
-    rows.map((h) => [h.id, h.name, plainMoney(h.capital), sharesDisplay(h.capital, sharePriceMicros), sharePriceMicros === null ? '' : plainPrice(sharePriceMicros)]),
+    ['investor_id', 'name', 'capital', 'shares_display', 'share_price', 'currency'],
+    rows.map((h) => [h.id, h.name, plainMoney(h.capital), sharesDisplay(h.capital, sharePriceMicros), sharePriceMicros === null ? '' : plainPrice(sharePriceMicros), currency]),
     ['capital', 'shares_display', 'share_price'],
   )
 }
@@ -117,6 +122,7 @@ export function closingConfirmation(
   const m = (x: number) => formatMoney(x, currency)
   const lines = [
     `Closing confirmation — ${dealName}`,
+    `Currency: ${currency}`,
     `Share price: ${formatPrice(priceMicros, currency)} (nominee SPV; fractional shares allowed)`,
     '',
     `Cash received: ${m(r.totals.received)}`,

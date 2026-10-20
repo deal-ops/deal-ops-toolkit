@@ -5,7 +5,7 @@ import { allocate } from './lib/allocation'
 import { distribute } from './lib/waterfall'
 import { holdingsFromAllocation } from './lib/snapshot'
 import { blocked } from './lib/outcome'
-import { allocationStale, exitStale, clearSaved, initialState, loadState, reducer, saveState, type AppState } from './state'
+import { allocationStale, amountsEntered, exitStale, clearSaved, initialState, loadState, reducer, saveState, type AppState } from './state'
 import { deriveAllocation, deriveDistribution, deriveReconcile } from './derive'
 import { DealSettings } from './components/DealSettings'
 import { Reconciliation } from './components/Reconciliation'
@@ -17,6 +17,7 @@ import { DISCLAIMER_TEXT, PRIVACY_TEXT } from './config'
 import { TourCard, TourNote } from './components/Tour'
 import { DEMO_CAP_TEXT, STEPS, context, firstStepOf, nothingToLose, prerequisitesMet, stateAt, tourIntact, type Chapter } from './tour/script'
 import { loadTourProgress, saveTourProgress, type TourProgress } from './tour/progress'
+import { applyTheme, loadTheme, saveTheme, type Theme } from './theme'
 
 type Tab = 'deal' | 'rec' | 'alloc' | 'exit'
 const TAB_LABEL: Record<Tab, string> = {
@@ -25,6 +26,12 @@ const TAB_LABEL: Record<Tab, string> = {
   alloc: 'Allocation',
   exit: 'Exit distribution',
 }
+
+const THEMES: [Theme, string][] = [
+  ['system', 'System'],
+  ['light', 'Light'],
+  ['dark', 'Dark'],
+]
 
 function browserStorage(): Storage | undefined {
   try {
@@ -118,6 +125,22 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
   const [saved, setSaved] = useState<TourProgress | null>(() => loadTourProgress(storage, STEPS.length))
   const savedStep = saved?.step ?? null
   const [confirmClear, setConfirmClear] = useState(false)
+  // keyboard users land on Cancel when the confirmation opens and back on its button when it closes (UI polish self-test #2)
+  const clearBtn = useRef<HTMLButtonElement>(null)
+  const cancelClearBtn = useRef<HTMLButtonElement>(null)
+  const clearWasOpen = useRef(false)
+  useEffect(() => {
+    if (confirmClear) cancelClearBtn.current?.focus()
+    else if (clearWasOpen.current) clearBtn.current?.focus()
+    clearWasOpen.current = confirmClear
+  }, [confirmClear])
+  // R-X-04: the theme is a browser preference, kept apart from the deal (decision 9)
+  const [theme, setTheme] = useState<Theme>(() => loadTheme(storage))
+  useEffect(() => applyTheme(theme), [theme])
+  const chooseTheme = (t: Theme) => {
+    setTheme(t)
+    saveTheme(storage, t)
+  }
   const tourCtx = useMemo(() => (tour ? context(state, tour.demoFrom) : null), [tour, state])
   useEffect(() => {
     document.documentElement.classList.toggle('touring', tour !== null || tourNote !== null)
@@ -214,6 +237,7 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
     setTourNote(null)
     setTourClosed(false)
     remember(null)
+    chooseTheme('system')
   }
 
   return (
@@ -256,7 +280,7 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
               Restart
             </button>
           )}
-          <button type="button" className="danger" onClick={() => setConfirmClear(true)}>
+          <button type="button" className="danger" ref={clearBtn} onClick={() => setConfirmClear(true)} disabled={confirmClear}>
             Clear all data
           </button>
           {confirmClear && (
@@ -265,7 +289,7 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
               <button type="button" className="danger" onClick={clearAll}>
                 Clear everything
               </button>{' '}
-              <button type="button" onClick={() => setConfirmClear(false)}>
+              <button type="button" ref={cancelClearBtn} onClick={() => setConfirmClear(false)}>
                 Cancel
               </button>
             </div>
@@ -283,6 +307,13 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
             <button type="button" onClick={tour ? startTour : () => dispatch({ type: 'loadSample' })}>
               Load sample deal
             </button>
+            <div className="theme-switch" role="group" aria-label="Theme">
+              {THEMES.map(([t, name]) => (
+                <button key={t} type="button" aria-pressed={theme === t} onClick={() => chooseTheme(t)}>
+                  {name}
+                </button>
+              ))}
+            </div>
           </div>
           {tourClosed && savedStep !== null && <p className="privacy">Tour paused. Pick it up any time with Resume tour.</p>}
           <p className="privacy">{PRIVACY_TEXT}</p>
@@ -317,7 +348,7 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
 
         <PendingContext value={reportPending}>
           <main key={generation}>
-            {tab === 'deal' && <DealSettings deal={deal} dispatch={dispatch} />}
+            {tab === 'deal' && <DealSettings deal={deal} dispatch={dispatch} amounts={amountsEntered(state)} />}
             {tab === 'rec' && (
               <Reconciliation
                 state={state}
