@@ -159,6 +159,17 @@ const MUTANTS = [
   ['src/components/common.tsx', "      aria-describedby={describedBy}\n", "", 'money fields lose their currency for screen readers (#2)'],
   ['src/components/DealSettings.tsx', "if (askCurrency) cancelCurrency.current?.focus()", "if (askCurrency) void 0", 'focus left on the select when the currency confirmation opens (#3)'],
   ['src/App.tsx', "onClick={() => setConfirmClear(true)} disabled={confirmClear}", "onClick={() => setConfirmClear(true)}", 'Clear all data stays active under its own confirmation'],
+  // v1.1.1 (PRD v0.7.6 R-X-02): a failed save names the right cause
+  ['src/state.ts', "return isQuotaError(e) ? 'full' : 'blocked'", "return 'blocked'", 'full storage reported as blocked'],
+  ['src/state.ts', "name === 'QuotaExceededError' || ", "", 'standard quota error not recognised'],
+  ['src/state.ts', "name === 'NS_ERROR_DOM_QUOTA_REACHED' || ", "", 'Firefox quota error not recognised'],
+  ['src/state.ts', "code === 22 || ", "", 'legacy quota code 22 not recognised'],
+  ['src/state.ts', " || code === 1014", "", 'legacy quota code 1014 not recognised'],
+  ['src/state.ts', "if (typeof e !== 'object' || e === null) return false", "if (e === null) return false", 'non-object errors inspected'],
+  ['src/state.ts', "  if (!storage) return 'blocked'\n", "  if (!storage) return 'saved'\n", 'no storage at all counted as saved (self-test #1)'],
+  ['src/App.tsx', '<div role="status" className="save-status">', '<div className="save-status">', 'save failure not announced (self-test #2)'],
+  ['src/App.tsx', "{saveResult === 'full' && (", "{saveResult !== 'saved' && (", 'full-storage message shown for blocked storage'],
+  ['src/App.tsx', "{saveResult === 'blocked' && (", "{saveResult !== 'saved' && (", 'blocked-storage message shown for full storage'],
 ]
 
 let survived = 0

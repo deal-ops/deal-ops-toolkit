@@ -1,14 +1,15 @@
-English snapshot of docs/04_TEST_PLAN.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated at v1.1.0 on 2026-10-21.
+English snapshot of docs/04_TEST_PLAN.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated at v1.1.0 on 2026-10-21 and for v1.1.1 on 2026-10-23.
 
 The scripts that check test coverage read the Chinese file; this English file is for reading.
 
 # Deal Ops Toolkit — Test Plan
 
-Version v0.7.1 (last revised 2026-10-20) · 2026-10-17 · Status: **Approved (2026-10-17)** · Based on: PRD v0.7
+Version v0.7.2 (last revised 2026-10-23) · 2026-10-17 · Status: **Approved (2026-10-17)** · Based on: PRD v0.7
 
 - v0.1 → v0.2: changed per Codex review #16 #17 #21 #24: each acceptance point maps to a test; independent recalculation extended to adversarial cases; new cases for boundaries, invalid input, formats and end-to-end; sample deal rewritten under the v0.2 default conventions, with numbers that can be frozen. All hand-calculated numbers were rechecked with Python `decimal`.
 - v0.2 → v0.3: added cases per round 2 R2-01/04/05/08/09/10/11/12/13; each case tagged with its due milestone; reset steps added to the manual checklist; default conditions for exit distribution written out in full.
 - v0.7 → v0.7.1 (2026-10-20, clarification): §6 exported negative amounts keep their minus sign.
+- v0.7.1 → v0.7.2 (2026-10-23): added TC-X-04 (PRD v0.7.6 R-X-02, save failures reported by cause).
 
 ---
 
@@ -205,6 +206,7 @@ Unless stated: fixed mode; k 20%; h 0; c 0; exit costs 0; n 5; capital A £60,00
 | TC-X-01 〔M2〕 | R-X-05 | Render the UI | All 11 terms listed in PRD R-X-05 have explanatory text | — |
 | TC-X-02 〔M2〕 | R-X-06 | Render the footer | Feedback link is `mailto:`, with "Please don't send real investor information" next to it | — |
 | TC-X-03 〔M4〕 | R-X-04 | Theme switch: default → choose Dark → reopen → Clear all data | Default is System and the page carries no theme mark; after Dark the page is marked dark and is still Dark after reopening; after "Clear all data" it is back to System and no theme is stored | — |
+| TC-X-04 〔M4〕 | R-X-02 | Saving in the browser: ① storage throws `QuotaExceededError` (including Firefox's `NS_ERROR_DOM_QUOTA_REACHED` and older browsers' code 22 / 1014); ② it throws another error (such as `SecurityError`), or the browser already refuses when `localStorage` is read (the usual case when site data is blocked), or `localStorage` is `null`; ③ saving then succeeds again | ① the "storage for this page is full" sentence shows, not "storage is blocked"; ② the "storage is blocked" sentence shows; ③ the message goes away; the message sits in a status region that screen readers announce; the app never fails in any case | — |
 
 ## 3. Sample deal (v0.2 conventions, for freezing)
 
@@ -334,7 +336,7 @@ Note: this lists "which cases verify this requirement". An ID being present does
 | R-DIS-06 | TC-DIS-01, 12, 15, 19 |
 | R-DIS-07 | TC-DIS-13, 14, 20 |
 | R-X-01 | E2E-05 |
-| R-X-02 | E2E-03, 04 |
+| R-X-02 | E2E-03, 04, TC-X-04 |
 | R-X-03 | E2E-06, M-08 |
 | R-X-04 | TC-X-03, E2E-07, M-09, M-10 (P1) |
 | R-X-05 | TC-X-01, M-08 |

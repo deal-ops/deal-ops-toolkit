@@ -381,7 +381,7 @@ describe('local saving (Tech Design §1)', () => {
     const store = new Map<string, string>()
     const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) }
     const s = reviewed()
-    expect(saveState(storage, s)).toBe(true)
+    expect(saveState(storage, s)).toBe('saved')
     expect([...store.keys()]).toEqual([STORAGE_KEY])
     expect(loadState(storage)).toEqual(JSON.parse(JSON.stringify(s)))
   })
@@ -396,8 +396,38 @@ describe('local saving (Tech Design §1)', () => {
       },
     }
     expect(loadState(throwing)).toBeNull()
-    expect(saveState(throwing, initialState())).toBe(false)
+    expect(saveState(throwing, initialState())).toBe('blocked')
     expect(loadState(undefined)).toBeNull()
+  })
+
+  it('TC-X-04 a failed save reports a full store apart from a blocked one', () => {
+    const failing = (e: unknown) => ({
+      setItem: () => {
+        throw e
+      },
+    })
+    const ok = { setItem: () => undefined }
+    expect(saveState(ok, initialState())).toBe('saved')
+    expect(saveState(undefined, initialState())).toBe('blocked') // the browser gave no storage at all
+    for (const e of [
+      new DOMException('quota', 'QuotaExceededError'),
+      { name: 'QuotaExceededError' }, // newer engines may drop the legacy code
+      { name: 'NS_ERROR_DOM_QUOTA_REACHED' },
+      { name: 'Error', code: 22 },
+      { code: 1014 },
+    ])
+      expect(saveState(failing(e), initialState())).toBe('full')
+    for (const e of [
+      new DOMException('insecure', 'SecurityError'),
+      new Error('QuotaExceededError'),
+      null,
+      undefined,
+      42,
+      'QuotaExceededError',
+      { code: '22' },
+      { name: 'quotaexceedederror' },
+    ])
+      expect(saveState(failing(e), initialState())).toBe('blocked')
   })
 
   it('damaged or foreign saved data is ignored, not trusted', () => {

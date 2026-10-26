@@ -625,12 +625,24 @@ export function loadState(storage: Pick<Storage, 'getItem'> | undefined): AppSta
   }
 }
 
-export function saveState(storage: Pick<Storage, 'setItem'> | undefined, s: AppState): boolean {
+export type SaveResult = 'saved' | 'full' | 'blocked'
+
+// a full store throws QuotaExceededError (Firefox: NS_ERROR_DOM_QUOTA_REACHED; older browsers only set code 22 or 1014)
+function isQuotaError(e: unknown): boolean {
+  if (typeof e !== 'object' || e === null) return false
+  const { name, code } = e as { name?: unknown; code?: unknown }
+  return name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED' || code === 22 || code === 1014
+}
+
+/** Saves the whole state; on failure says why, so the page names the right cause (PRD R-X-02, v0.7.6). */
+export function saveState(storage: Pick<Storage, 'setItem'> | undefined, s: AppState): SaveResult {
+  // no storage at all: the browser refused it before any write (cookies or site data blocked), so nothing is saved
+  if (!storage) return 'blocked'
   try {
-    storage?.setItem(STORAGE_KEY, JSON.stringify(s))
-    return true
-  } catch {
-    return false
+    storage.setItem(STORAGE_KEY, JSON.stringify(s))
+    return 'saved'
+  } catch (e) {
+    return isQuotaError(e) ? 'full' : 'blocked'
   }
 }
 

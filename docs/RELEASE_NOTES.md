@@ -2,6 +2,17 @@
 
 Rule P9: only what is implemented, tested and deployed is listed. Each line names the requirement and the tests that cover it.
 
+## v1.1.1 — released 2026-10-23
+
+Live at https://deal-ops-toolkit.vercel.app (build `index-CZaWFdNy.js`).
+
+A fix found while preparing the next version (PR #18 in the private development repository; PRD v0.7.6). The tag `v1.1.1` and the release commit `8734580` are in the private development repository. No calculation rule or figure changed. Checked on `main` on 2026-10-23: 287 unit tests pass; all 150 test-plan cases due at M4 ran and passed; 9 of 9 end-to-end cases (27 tests); 141 of 141 deliberate code breakages caught; the Python oracle's self-check 139 of 139.
+
+**Saving in the browser** (R-X-02, TC-X-04)
+- When the browser's storage for the page is full, the page now says so: "This browser's storage for this page is full, so your latest changes are not being saved. Export what you need before you close the page." Before, it wrongly said storage was blocked.
+- When the browser refuses storage altogether (for example when site data is blocked), the page now says "storage is blocked". Before, it said nothing, so the data looked saved but was gone when the page closed.
+- The message is announced by screen readers.
+
 ## v1.1.0 — released 2026-10-21
 
 Live at https://deal-ops-toolkit.vercel.app (build `index-DLntVfU4.js`). The tag `v1.1.0` and the release commit `d588b56` are in the private development repository. Production smoke test on 2026-10-21: the sample deal's figures match Test Plan §3 and the confirmation names `Currency: GBP`; a Dark choice survives a reload; 12 requests, all same-origin GETs without bodies or query strings; no console errors; the security headers match Tech Design §4.

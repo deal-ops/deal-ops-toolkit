@@ -1,4 +1,4 @@
-English snapshot of docs/PROGRESS.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated at v1.1.0 on 2026-10-21.
+English snapshot of docs/PROGRESS.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated at v1.1.0 on 2026-10-21 and for v1.1.1 on 2026-10-26.
 
 # Deal Ops Toolkit — progress record
 
@@ -15,6 +15,7 @@ This file records each stage: what was done, how it was verified, who reviewed i
 | M4 release preparation + visual refresh | ✅ Accepted and merged (PR #4) | 2026-10-20 |
 | G3 release v1.0.0 | ✅ Live at https://deal-ops-toolkit.vercel.app | 2026-10-20 |
 | Post-release improvements (PR #11) | ✅ Live as v1.1.0 | 2026-10-20 → 10-21 |
+| v1.1.1 save failures reported truthfully (PR #18) | ✅ Live as v1.1.1 | 2026-10-23 |
 
 ---
 
@@ -317,3 +318,36 @@ One mutant can only be seen in a real browser (jsdom does not model label clicks
 - The explanation placement (opening to the left, pinned to the bottom) has no automated test; it is checked by hand in manual items M-09 and M-10.
 
 **Links:** PR #11 in the private development repository · release notes `docs/RELEASE_NOTES.md` · review records: kept in the private development repository; summarised in `docs/en/REVIEW_SUMMARY.md`
+
+---
+
+## v1.1.1 save failures reported truthfully (PR #18)
+
+**Status:** ✅ Live as v1.1.1 · 2026-10-23 · after Claude's simulated acceptance the owner replied "accept, merge", and Claude recorded it and merged; after the G3 check the owner replied "merge, release now", and Claude merged into `release` (`8734580`) and tagged `v1.1.1`.
+
+**What was done**
+- Found while preparing the next version, and present in the live v1.1.0: when browser storage was full, the page wrongly said "storage is blocked"; when the browser refused storage as soon as it was read (the usual case when site data is blocked), the page said nothing, so people would think their data was saved and lose it on closing the page.
+- **PRD v0.7.6, R-X-02:** a full store shows "This browser's storage for this page is full, so your latest changes are not being saved. Export what you need before you close the page."; any other save failure, or no storage at all, shows the existing "storage is blocked" sentence. The message sits in a status region that screen readers announce.
+- No calculation rule or figure changed; nothing under `src/lib/` changed. Test plan v0.7.2 adds TC-X-04; English docs synced.
+
+**How it was checked**
+- **Automated tests:** 287 unit tests pass; due cases 150/150; 27 end-to-end tests (9/9 due); mutation 141/141 (10 new mutants; the first run missed 3, all from tests that were not precise enough, and all are caught after the tests were tightened).
+- **Simulated acceptance (authorised by the owner):** 8 checks on the preview, all passed: with storage filled on purpose the page says it is full, and the saved data really lacks the new change; after freeing space the message goes and the changes are saved; figures are right after a reload.
+- **G3 release check (2026-10-23):** production build `index-CZaWFdNy.js`; security headers and a smoke test on the live site passed.
+
+**Reviews**
+
+| Round | Reviewer | Verdict | Findings |
+|---|---|---|---|
+| Self-test | Independent reviewer agent | Ready after fixes | 1 major: no message when the browser refuses storage on read; 1 minor: screen readers do not hear the message |
+| 1 | Codex | Ready | None; suggested 3 more tests, added |
+| Simulated acceptance (authorised by the owner) | Claude | All 8 checks passed | — |
+
+**Decisions (owner)**
+- Fix this on its own first: "as suggested".
+- PR #18: "simulate my acceptance", then after the results "accept, merge"; release: "merge, release now".
+
+**Open items**
+- Blocking site data in Chrome's settings was not tried in the browser (browser settings were left alone); the automated tests cover it.
+
+**Links:** PR #18 in the private development repository · release notes `docs/RELEASE_NOTES.md` · review records: kept in the private development repository; summarised in `docs/en/REVIEW_SUMMARY.md`

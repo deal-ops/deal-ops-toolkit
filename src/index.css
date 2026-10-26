@@ -369,6 +369,13 @@ input[type='checkbox'] {
   background: var(--text-strong);
   color: var(--bg);
 }
+.save-status {
+  flex-basis: 100%;
+}
+/* kept in the page so screen readers announce a later save failure (WCAG 4.1.3), but out of the header's flex gaps while empty */
+.save-status:empty {
+  position: absolute;
+}
 .privacy {
   flex-basis: 100%;
   font-size: 13px;

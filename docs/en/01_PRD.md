@@ -1,8 +1,8 @@
-English snapshot of docs/01_PRD.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated at v1.1.0 on 2026-10-21.
+English snapshot of docs/01_PRD.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated at v1.1.0 on 2026-10-21 and for v1.1.1 on 2026-10-23.
 
 # Deal Ops Toolkit — Product Requirements Document (PRD)
 
-Version v0.7.5 (last revised 2026-10-20) · 2026-10-17 · Status: **Approved (2026-10-17)**, G0/G1 gates passed, freeze lifted (until G0 passed, no implementation code was written apart from the existing spike)
+Version v0.7.6 (last revised 2026-10-23) · 2026-10-17 · Status: **Approved (2026-10-17)**, G0/G1 gates passed, freeze lifted (until G0 passed, no implementation code was written apart from the existing spike)
 
 - Owner: Haixiang Yuan (product) · Development: Claude Code (following this document and the Technical Design)
 - v0.1 → v0.2: revised after Codex review round 1 (REWORK, 24 items) and the owner's decisions of 2026-10-16 (see the review summary).
@@ -137,7 +137,7 @@ Each requirement is split into separately verifiable acceptance points (numbered
 | ID | Acceptance point | Priority |
 |---|---|---|
 | R-X-01 | Load a fictional sample deal in one click; a guided mode highlights and explains typical problems in the three modules step by step | P0 |
-| R-X-02 | Privacy: deal data entered or imported is processed only locally in the browser, and the code never sends it anywhere; the page wording is "Your deal data is processed in your browser and never sent by this app. The hosting provider still receives normal page requests."; data is kept in this browser on this device, with a "Clear all data" button; deal data never appears in the URL | P0 |
+| R-X-02 | Privacy: deal data entered or imported is processed only locally in the browser, and the code never sends it anywhere; the page wording is "Your deal data is processed in your browser and never sent by this app. The hosting provider still receives normal page requests."; data is kept in this browser on this device, with a "Clear all data" button; deal data never appears in the URL. When saving fails, the message names the cause (v0.7.6): storage blocked → "This browser is not saving your data (storage is blocked), so it will be gone when you close the page."; storage full → "This browser's storage for this page is full, so your latest changes are not being saved. Export what you need before you close the page." | P0 |
 | R-X-03 | On first open and in the footer: not investment, tax or legal advice; results need human checking; not affiliated with any platform | P0 |
 | R-X-04 | At mobile width (375px) all steps of manual acceptance checklist M-01 to M-07 can be completed; light and dark themes supported. The theme can be switched on the page: System (follows the device, default) / Light / Dark; the choice is kept only in this browser and "Clear all data" removes it too (v0.7.4, decision 9) | P1 |
 | R-X-05 | UI in English, in plain words; these terms have a one-line explanation in the UI (hover or expand): SPV, nominee / bare trust, beneficial interest, minimum commitment, scale-back, S/EIS, carry, hurdle, catch-up, tiered carry, waterfall | P0 |
@@ -305,6 +305,7 @@ Aliases are compared after converting to lower case and trimming leading and tra
 | 2026-10-17 | v0.5 | Holdings weight basis: editing changes only that row, not the basis; CSV carries a basis column, lossless export and re-import; share count check applies only to the by-shares basis | Codex: READY AFTER FIXES (round 5, 2 minor) |
 | 2026-10-17 | v0.6 | Holdings export format; snapshot saves the share price; share price optional on import | Codex passed |
 | 2026-10-17 | v0.7.2 | Clarifications (definitions unchanged): exact hurdle calculation, floating-point exception removed; reference digit comparison by segment combination; export escaping by column type, reversed on import; non-English letters count as letters, only a–z converted to upper case; punctuation and hyphens in names treated as spaces. Source: M1 code review #1 #11 #12, self-test review #9 #10 #11 | Confirmed with M1 acceptance |
+| 2026-10-23 | v0.7.6 | R-X-02: when saving in the browser fails, tell "storage blocked" apart from "storage full"; before, both showed "storage is blocked", which named the wrong cause when storage was full (found while preparing the next version). No calculation rule changed | **owner decision (2026-10-23)** (in conversation: "as suggested", the recommendation being to fix it on its own first) |
 | 2026-10-20 | v0.7.5 | R-DEAL-01, R-ALL-10, I-01, I-03, §5.5: currency display, confirmation before a currency change, `currency` column in exports, `currency` column checked on import, US$, thousands commas in share prices (decision 10). No calculation rule changed | **owner decision (2026-10-20)** |
 | 2026-10-20 | v0.7.4 | R-X-04: manual theme switch System / Light / Dark, following the device by default (decision 9). No calculation rule changed | **owner decision (2026-10-20)** |
 | 2026-10-20 | v0.7.3 | §2.2 non-goals and rule P6: visual and interaction style is an owner decision; still no third-party names, marks, trademarks, brand assets or page text (decision 8). No calculation rule changed | **owner decision (2026-10-20)** |

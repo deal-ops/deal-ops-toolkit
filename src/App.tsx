@@ -5,7 +5,7 @@ import { allocate } from './lib/allocation'
 import { distribute } from './lib/waterfall'
 import { holdingsFromAllocation } from './lib/snapshot'
 import { blocked } from './lib/outcome'
-import { allocationStale, amountsEntered, exitStale, clearSaved, initialState, loadState, reducer, saveState, type AppState } from './state'
+import { allocationStale, amountsEntered, exitStale, clearSaved, initialState, loadState, reducer, saveState, type AppState, type SaveResult } from './state'
 import { deriveAllocation, deriveDistribution, deriveReconcile } from './derive'
 import { DealSettings } from './components/DealSettings'
 import { Reconciliation } from './components/Reconciliation'
@@ -33,18 +33,20 @@ const THEMES: [Theme, string][] = [
   ['dark', 'Dark'],
 ]
 
+// Browsers that block site data throw when localStorage is read (Firefox can also return null; saveState treats
+// a missing store as blocked): the app still works, it just does not remember, and says so (PRD R-X-02, v0.7.6).
 function browserStorage(): Storage | undefined {
   try {
     return window.localStorage
   } catch {
-    return undefined // blocked storage: the app still works, it just does not remember
+    return undefined
   }
 }
 
 export default function App({ storage = browserStorage() }: { storage?: Storage }) {
   const [state, dispatch] = useReducer(reducer, undefined, () => loadState(storage) ?? initialState())
   const [tab, setTab] = useState<Tab>('rec')
-  const [saveOk, setSaveOk] = useState(true)
+  const [saveResult, setSaveResult] = useState<SaveResult>('saved')
   const skipSave = useRef(false)
   // remounting on clear also drops text held inside components (pasted CSV, import messages)
   const [generation, setGeneration] = useState(0)
@@ -66,7 +68,7 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
       skipSave.current = false
       return
     }
-    setSaveOk(saveState(storage, state))
+    setSaveResult(saveState(storage, state))
   }, [state, storage])
 
   const { deal, commitments, bank, decisions, allocation, exit } = state
@@ -317,7 +319,16 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
           </div>
           {tourClosed && savedStep !== null && <p className="privacy">Tour paused. Pick it up any time with Resume tour.</p>}
           <p className="privacy">{PRIVACY_TEXT}</p>
-          {!saveOk && <p className="privacy">This browser is not saving your data (storage is blocked), so it will be gone when you close the page.</p>}
+          <div role="status" className="save-status">
+            {saveResult === 'blocked' && (
+              <p className="privacy">This browser is not saving your data (storage is blocked), so it will be gone when you close the page.</p>
+            )}
+            {saveResult === 'full' && (
+              <p className="privacy">
+                This browser's storage for this page is full, so your latest changes are not being saved. Export what you need before you close the page.
+              </p>
+            )}
+          </div>
         </header>
 
         {!state.disclaimerAccepted && (

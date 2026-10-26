@@ -1165,4 +1165,60 @@ describe('M4 visual refresh (the M4 visual plan (not published) v0.2)', () => {
     expect(screen.getByText('Tour paused. Pick it up any time with Resume tour.')).toBeTruthy()
     expect(screen.getByRole('button', { name: /^Resume tour \(step 1 of 12\)$/ })).toBeTruthy()
   })
+
+  it('TC-X-04 a full store says the storage is full, a blocked one says blocked, and the message goes once saving works', () => {
+    let fail: Error | null = new DOMException('The quota has been exceeded.', 'QuotaExceededError')
+    class FailingStorage extends MemoryStorage {
+      setItem(k: string, v: string) {
+        if (fail) throw fail
+        super.setItem(k, v)
+      }
+    }
+    const full = /storage for this page is full, so your latest changes are not being saved/
+    const blocked = /storage is blocked/
+    const storage = new FailingStorage()
+    fail = null
+    render(<App storage={storage} />)
+    const region = screen.getByRole('status')
+    expect(region.textContent).toBe('')
+    fail = new DOMException('The quota has been exceeded.', 'QuotaExceededError')
+    click('Load sample deal')
+    // the same live region, mounted before the failure, carries the message, so screen readers announce it mid-session
+    expect(screen.getByRole('status')).toBe(region)
+    expect(region.textContent).toMatch(full)
+    expect(screen.getByText(full)).toBeTruthy()
+    expect(screen.queryByText(blocked)).toBeNull()
+    fail = new DOMException('The operation is insecure.', 'SecurityError')
+    click('Clear all data')
+    click('Clear everything')
+    click('Load sample deal')
+    expect(screen.getByText(blocked)).toBeTruthy()
+    expect(screen.queryByText(full)).toBeNull()
+    fail = null
+    fireEvent.click(screen.getByRole('tab', { name: 'Deal settings' }))
+    edit('Deal name', 'Acme Seed SPV')
+    expect(screen.queryByText(blocked)).toBeNull()
+    expect(screen.queryByText(full)).toBeNull()
+    expect(JSON.parse(storage.getItem(STORAGE_KEY)!).deal.name).toBe('Acme Seed SPV') // really saved after recovery
+  })
+
+  it('TC-X-04 a browser that refuses storage before any write (site data blocked, or no localStorage) shows the blocked message', () => {
+    const blocked = /storage is blocked/
+    const refuse = vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => {
+      throw new DOMException('The operation is insecure.', 'SecurityError')
+    })
+    try {
+      render(<App />)
+      expect(screen.getByRole('status').textContent).toMatch(blocked)
+      cleanup()
+      refuse.mockImplementation(() => null as unknown as Storage)
+      render(<App />)
+      expect(screen.getByRole('status').textContent).toMatch(blocked)
+    } finally {
+      refuse.mockRestore()
+    }
+    cleanup()
+    render(<App />)
+    expect(screen.getByRole('status').textContent).toBe('')
+  })
 })
