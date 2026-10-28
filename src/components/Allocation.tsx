@@ -11,6 +11,8 @@ import { Cell, Checks, ErrorList, ImportBox, Notice, Section, Term, UpdatingNoti
 import { useListMessage } from './listMessage'
 import { download } from './download'
 import { SchemeSelect } from './Reconciliation'
+import { FeePayerPanel } from './FeeChange'
+import type { deriveChangeRecheck } from '../derive'
 
 const BLOCKER_TEXT: Record<AllocationResult['blockers'][number]['code'], string> = {
   'no-participants': 'No investor can be allocated.',
@@ -52,7 +54,9 @@ export function Allocation({
   pending,
   canHandoffToExit,
   onHandoffToExit,
+  recheck,
 }: {
+  recheck: ReturnType<typeof deriveChangeRecheck>
   pending: boolean
   canHandoffToExit: boolean
   onHandoffToExit: () => void
@@ -185,6 +189,8 @@ export function Allocation({
         Deal settings). Company-paid fees come out of the wire to the company; lead-paid fees are invoiced to the lead.
       </p>
 
+      <FeePayerPanel state={state} dispatch={dispatch} pending={pending} recheck={recheck} />
+
       <Section resetKey={listKey} startOpen={a.investors.length === 0} keepOpen={importMsg !== null}>
         <summary>
           <h3>Investors ({a.investors.length})</h3>
@@ -259,11 +265,11 @@ export function Allocation({
 
       {a.excess.length > 0 && (
         <>
-          <h4>Over-payments to refund (not carried into the allocation)</h4>
+          <h4>Refunds outside the allocation (not carried into it)</h4>
           <ul data-testid="excess">
             {a.excess.map((x) => (
               <li key={x.id}>
-                {x.name}: {m(x.amount)}
+                {x.name}: {m(x.amount)} ({x.reason === 'Withdrawn' ? 'withdrawn before closing' : 'over-payment'})
                 {x.needsCheck && (
                   <>
                     {' '}

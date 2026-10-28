@@ -2,7 +2,7 @@
 // Reads the Vitest JSON report; never searches source text.
 import { readFileSync } from 'node:fs'
 
-const order = ['M1', 'M2', 'M3', 'M4']
+const order = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6']
 const current = readFileSync('docs/milestone.txt', 'utf8').trim()
 if (!order.includes(current)) {
   console.log(`invalid milestone "${current}" in docs/milestone.txt (expected one of ${order.join(', ')})`)

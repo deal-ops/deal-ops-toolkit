@@ -1,3 +1,4 @@
+import Papa from 'papaparse'
 import { describe, expect, it } from 'vitest'
 import {
   AGED_NOTE,
@@ -171,14 +172,16 @@ describe('reconciliation', () => {
     const r = run([L(500_000, 'J SMITH', 'NW-001', '2026-10-09', 'a'), L(500_000, 'J SMITH', 'NW-001', '2026-10-10', 'b')])
     const h = handoffToAllocation(r)
     expect(h.ok && h.value.investors.find((x) => x.id === 'john')?.received).toBe(500_000)
-    expect(h.ok && h.value.excess).toEqual([{ id: 'john', name: 'John Smith', amount: 500_000 }])
+    expect(h.ok && h.value.excess).toEqual([{ id: 'john', name: 'John Smith', amount: 500_000, reason: 'Over-paid' }])
   })
 
   it('TC-REC-22 ledger and chase-list exports', () => {
     const r = run([L(500_000, 'J SMITH', 'NW-001')])
-    expect(ledgerCsv(r, 'GBP').split(/\r?\n/)[0]).toBe('transaction_id,date,amount,payer,reference,status,investor_id,investor_name,decided_by,currency')
-    expect(ledgerCsv(r, 'GBP').split(/\r?\n/)[1]).toMatch(/,5000\.00,J SMITH,NW-001,auto,john,John Smith,auto,GBP$/)
-    expect(chaseListCsv(r, 'GBP').split(/\r?\n/)[0]).toBe('investor_id,name,email,committed,received,difference,status,currency')
+    expect(ledgerCsv(r, 'GBP').split(/\r?\n/)[0]).toBe('transaction_id,date,amount,payer,reference,status,investor_id,investor_name,decided_by,withdrawn_on,currency')
+    expect(ledgerCsv(r, 'GBP').split(/\r?\n/)[1]).toMatch(/,5000\.00,J SMITH,NW-001,auto,john,John Smith,auto,,GBP$/)
+    expect(chaseListCsv(r, 'GBP', 'Deal').split(/\r?\n/)[0]).toBe(
+      'investor_id,name,email,committed,received,difference,status,committed_original,committed_adjustment,message,currency',
+    )
   })
 
   it('TC-REC-23 on-top fees: cash due includes the fee and flows through to £10,000 invested', () => {
@@ -218,7 +221,8 @@ describe('reconciliation', () => {
 
   it('TC-REC-27 the chase list holds only short and unpaid investors', () => {
     const r = run(SAMPLE_BANK, {}, SAMPLE_COMMITMENTS, '2026-10-16')
-    const names = chaseListCsv(r, 'GBP').split(/\r?\n/).slice(1).map((l) => l.split(',')[1])
+    // the message column holds line breaks, so the file is read as CSV, not split by line
+    const names = Papa.parse<string[]>(chaseListCsv(r, 'GBP', 'Deal'), { skipEmptyLines: true }).data.slice(1).map((row) => row[1])
     expect(names).toEqual(['Chloe Martin', 'David Kim', 'Elena Rossi', 'James Whitfield', 'Kavya Iyer'])
   })
 

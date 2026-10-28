@@ -53,7 +53,7 @@ describe('sample deal (Test Plan §3)', () => {
 
     const h = handoffToAllocation(o.result)
     if (!h.ok) throw new Error(h.reason)
-    expect(h.value.excess).toEqual([{ id: 'c08', name: 'Hugo Bernard', amount: 500_000 }])
+    expect(h.value.excess).toEqual([{ id: 'c08', name: 'Hugo Bernard', amount: 500_000, reason: 'Over-paid' }])
     const received = Object.fromEntries(h.value.investors.map((x) => [x.id, x.received]))
     expect([received.c04, received.c08, received.c10]).toEqual([200_000, 500_000, 0])
 

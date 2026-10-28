@@ -1179,12 +1179,12 @@ describe('M4 visual refresh (the M4 visual plan (not published) v0.2)', () => {
     const storage = new FailingStorage()
     fail = null
     render(<App storage={storage} />)
-    const region = screen.getByRole('status')
+    const region = screen.getByRole('status', { name: 'Save status' })
     expect(region.textContent).toBe('')
     fail = new DOMException('The quota has been exceeded.', 'QuotaExceededError')
     click('Load sample deal')
     // the same live region, mounted before the failure, carries the message, so screen readers announce it mid-session
-    expect(screen.getByRole('status')).toBe(region)
+    expect(screen.getByRole('status', { name: 'Save status' })).toBe(region)
     expect(region.textContent).toMatch(full)
     expect(screen.getByText(full)).toBeTruthy()
     expect(screen.queryByText(blocked)).toBeNull()
@@ -1209,16 +1209,16 @@ describe('M4 visual refresh (the M4 visual plan (not published) v0.2)', () => {
     })
     try {
       render(<App />)
-      expect(screen.getByRole('status').textContent).toMatch(blocked)
+      expect(screen.getByRole('status', { name: 'Save status' }).textContent).toMatch(blocked)
       cleanup()
       refuse.mockImplementation(() => null as unknown as Storage)
       render(<App />)
-      expect(screen.getByRole('status').textContent).toMatch(blocked)
+      expect(screen.getByRole('status', { name: 'Save status' }).textContent).toMatch(blocked)
     } finally {
       refuse.mockRestore()
     }
     cleanup()
     render(<App />)
-    expect(screen.getByRole('status').textContent).toBe('')
+    expect(screen.getByRole('status', { name: 'Save status' }).textContent).toBe('')
   })
 })

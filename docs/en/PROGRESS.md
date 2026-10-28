@@ -1,4 +1,4 @@
-English snapshot of docs/PROGRESS.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated at v1.1.0 on 2026-10-21 and for v1.1.1 on 2026-10-26.
+English snapshot of docs/PROGRESS.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated at v1.1.0 on 2026-10-21, for v1.1.1 on 2026-10-26 for v1.2.0 on 2026-10-27 and for v1.2.1 on 2026-10-28.
 
 # Deal Ops Toolkit — progress record
 
@@ -16,6 +16,11 @@ This file records each stage: what was done, how it was verified, who reviewed i
 | G3 release v1.0.0 | ✅ Live at https://deal-ops-toolkit.vercel.app | 2026-10-20 |
 | Post-release improvements (PR #11) | ✅ Live as v1.1.0 | 2026-10-20 → 10-21 |
 | v1.1.1 save failures reported truthfully (PR #18) | ✅ Live as v1.1.1 | 2026-10-23 |
+| v0.8 chasing payments and changes before closing (documents stage) | ✅ Approved by the owner (PR #23) | 2026-10-23 → 10-25 |
+| M5 chase and query messages, activity log (PR #24) | ✅ Accepted and merged | 2026-10-25 → 10-26 |
+| M6 withdrawal, changing who pays a fee (PR #27) | ✅ Accepted and merged | 2026-10-26 → 10-27 |
+| G3 release v1.2.0 (M5 + M6) | ✅ Live https://deal-ops-toolkit.vercel.app | 2026-10-27 |
+| v0.8.2 generic wording in the chase message, release v1.2.1 | ✅ Live https://deal-ops-toolkit.vercel.app | 2026-10-28 |
 
 ---
 
@@ -351,3 +356,135 @@ One mutant can only be seen in a real browser (jsdom does not model label clicks
 - Blocking site data in Chrome's settings was not tried in the browser (browser settings were left alone); the automated tests cover it.
 
 **Links:** PR #18 in the private development repository · release notes `docs/RELEASE_NOTES.md` · review records: kept in the private development repository; summarised in `docs/en/REVIEW_SUMMARY.md`
+---
+
+## v0.8 chasing payments and changes before closing (documents stage)
+
+**Status:** ✅ Documents approved · 2026-10-25 · scope and the 3 recommendations approved on 2026-10-23; the v0.8 PRD, technical design, test plan and tour design went through a fresh-context review (14 findings) and 3 Codex rounds (10 / 7 / 2), all fixed, and the independent oracle self-check passed 178/178; the owner replied "approved"; PR #23 merged into `main` (`fd48c9e`), English copies synced.
+
+**What was done**
+- The PRD v0.8 draft adds the parts of chasing payments and changes before closing that need no operator-held data: chase and payment-query text for investors (copied by the person, never sent by the tool), a local activity log, withdrawal before closing, and changing who pays a percentage fee before closing. Existing calculation rules are unchanged.
+- The owner asked for industry research on the 3 open points: 3 research agents in parallel looked at SPV platforms, Stripe, Modern Treasury, FCA CASS, NIST, OWASP, tour completion data and more. Outcome: a fee payer change is recorded as an adjustment that leaves the original cash due untouched and can be reversed in one step; the activity log holds 5,000 entries, warns at 80% to export, then removes the oldest, and never blocks work; the tour gains no steps, only one sentence in step 6 and a changed end card.
+
+**Decisions (owner)**
+- Scope: "as recommended" (no automatic email, no withdrawal after closing, no rolling close, conversion or two valuations, no payer change for fixed fees).
+- The 3 points: first "research the industry's solutions in depth", then "give a professional recommendation", then "as recommended" after the recommendation. Also: v0.8 as two PRs (chasing payments first, then changes before closing).
+
+**Links:** PR #23 in the private development repository · research record: kept in the private development repository
+
+---
+
+## M5 chase and query messages, activity log (PR #24)
+
+**Status:** ✅ Accepted and merged · 2026-10-26 · PR #24 (merge commit `1f6a700`).
+
+**What was done**
+- **Chase message (R-REC-10.1):** investors who are short or have not paid get "Copy message", which copies a fixed English chase email (template A, with the MT103 / UETR explanation); the chase list CSV gains a `message` column.
+- **Payment query (R-REC-10.2):** every candidate of a receipt in review gets "Copy query"; the text gives only the date, amount and currency, never the payer, bank reference or transaction ID (template B).
+- **Copy only, never sent (R-REC-10.3):** no `mailto:`, no request; without a clipboard the text is shown selected for the person to copy.
+- **Activity log (R-X-08):** a new "Activity log" page, newest first, read-only, CSV export; it records imports, every decision by a person, voided decisions, hand-offs, copies, exports and loading the sample, with the tour's own decisions marked `guided tour`. It holds 5,000 entries, asks for an export from 4,000, then removes the oldest into one `truncated` line; when the browser's storage is full the oldest entries go first and the deal data is saved. Initials can be set in Deal settings.
+- **Tour v0.3, M5 part:** one sentence in step 6 about "Copy message"; the end card gains "Every decision you just made is in the Activity log." and "Try next" item 3 (undo a confirmed payment to see Copy query); "Take me to it" only takes you to the control, it never acts.
+- **Saved data schema 2:** storage and checks for withdrawals and fee payer changes are in place (their interface comes in M6); v1.1.x saves load as before. No calculation rule or figure changed.
+
+**How it was checked**
+- **Automated tests:** 349 unit tests pass; due cases 168/168 (18 new for M5); 28 end-to-end tests (10/10 due, new E2E-08); mutation check 197/197 (more than 50 new; a few survived along the way, each fixed with a test or by removing redundant code).
+- **Hostile input:** names with quotes, line breaks and emoji; `__proto__` as an investor ID; crafted logs (empty entries, wrong types, oversized, huge numbers); the largest save in a browser that counts 5 MiB in bytes.
+- **Simulated acceptance (local preview):** M-01, M-02, M-03 match Test Plan §3; M-12: David's chase text and Chloe's query copied and read back from the system clipboard in full; every step is in the activity log, and the exported CSV has the right header, escaping and currency column (no file was downloaded; the export was captured in the page).
+
+**Reviews**
+
+| Round | Reviewer | Verdict | Findings |
+|---|---|---|---|
+| Self-test | Independent reviewer agent | Ready after fixes | 1 major, 4 minor: clearing a voided decision logged as an undo; an ID change logged as a deletion; damaged-log numbering; fee payer change save checks; screen-reader message |
+| 1 | Codex | Ready after fixes | 1 major, 3 minor: one empty log entry lost the whole deal on reload; a recovered log not readable again; a failed copy logged wrongly; the `truncated` line hidden by paging |
+| 2 | Codex | Ready after fixes | 1 major, 3 minor: a copy finishing after a clear wrote the name back; coercion on read; enum fields accepted as arrays; trimming lost newer entries |
+| 3 | Codex | Ready after fixes | 1 major, 4 minor: a quote in a transaction ID crashed the page; overlapping copies logged once; one damaged `truncated` field lost the line; export mark ahead of the log; number precision |
+| 4 | Codex | Ready after fixes | 1 major, 3 minor, all in earlier patches, so three simpler designs replaced them (trim by the last dropped entry, note the data generation at the click, no artificial number ceiling) |
+| 5 | Independent reviewer agent (Codex usage limit reached) | Ready after fixes | 1 minor: technical design §9.3 behind the round-4 designs; documents corrected |
+| 5 (re-run) | Codex | Ready after fixes | 2 minor, both only with a hand-damaged save: a line id `__proto__` logged a voided decision on deletion; log recovery could reuse number 91 |
+
+No finding touched a money calculation; they were about the activity log staying correct with damaged saves and overlapping timing.
+
+While re-running round 5: CI on the PR had failed since the round-3 changes because of one lint warning (the earlier "CI green" was based on local test runs and was wrong). Fixed, and the CI result was checked on GitHub.
+
+**Simulated acceptance (2026-10-26, local preview of `55fc2a9`):** M-08, M-01, M-02, M-12 and M-03 all pass, figures match §3; clipboard contents read back with `pbpaste`; the activity log has all 9 steps with correct times, and the export was captured in the page. 375px (headless browser): no horizontal page scroll on Reconciliation or Activity log; the log table scrolls inside its box. One observation: when the clipboard is unavailable the manual-copy box sits inside the investors table, so at 375px you scroll the table to see all of it; it works but is cramped.
+
+**Decisions (owner)**
+- "Codex has usage again": round 5 re-run.
+- "Simulate acceptance; if it passes, accept and merge": simulated acceptance passed; Claude recorded Accepted on the PR and merged.
+
+**Open / next**
+- 375px: the activity log page was checked in a headless browser; the end card and a real phone have not been checked. The manual-copy box is cramped on narrow screens; a candidate for a later small fix.
+- Next, M6: withdrawal before closing, changing who pays a fee, the confirmation's withdrawal section, "Try next" items 1 and 2.
+
+**Links:** PR #24 in the private development repository · review records: kept in the private development repository; summarised in `docs/en/REVIEW_SUMMARY.md`
+
+## M6 Withdrawal before closing, changing who pays a fee (PR #27)
+
+**Status:** ✅ Accepted and merged · 2026-10-27 · PR #27 (merge commit `7cdb065`).
+
+**What was built**
+- **Withdrawal before closing (R-REC-11, C-REC-7):** each row of the reconciliation investor table can be "Mark withdrawn", which needs ticked written consent and a date (default: the as-of date) and can be undone. A withdrawn investor shows Withdrawn, is not chased, is not handed off, and everything received is listed to refund (reason Withdrawn); the summary says "Withdrawn: n investor(s), £x to refund"; the closing confirmation adds "Withdrawn before closing (refund in full)" after the over-payments. Money arriving after the withdrawal still books to the investor and adds to the refund.
+- **Changing who pays a fee (R-ALL-12, C-ALL-10/11):** an allocation panel "Change who pays a fee": pick a percentage fee and a new payer; the preview shows each investor's current cash due, the investment kept, the new cash due and the difference; moving to investors or the company needs ticked consent, to the lead only informing; the button states "Apply: n top-ups … · m refunds …". Applied, the investor list keeps its values and an adjustment record is saved beside it; reconciliation uses the adjusted amount (e.g. Amelia "was £10,000.00 · −£300.00 fee payer change"), over-payments go to refunds and top-ups to the chase list; "Reverse" restores it in one step. Edits to the list or the fee void it for good; changed allocation settings bring a reminder and a re-check.
+- **Sample figures:** platform fee to the company with a £970 minimum: 12 investors £124,000.00 → £120,280.00 (12 refunds, £3,720.00), company-paid platform fee £3,608.40 — as the PRD hand calculation and the test plan say.
+- **Exports:** the ledger gains `withdrawn_on`; the chase list's `committed` is the adjusted amount, plus `committed_original` and `committed_adjustment`.
+- **Tour:** end card "Try next" items 1 and 2 (withdraw Lucas; platform fee to the company with the minimum at £970), one sentence on each new panel; terms withdrawal and fee payer.
+- **New owner decision 12 (PRD v0.8.1):** the currency is locked while a fee payer change is active — reverse first (research: QuickBooks and Stripe official docs).
+
+**How it was checked**
+- **Automated:** 420 unit tests pass; M6 due cases 199/199; 31 end-to-end tests (11/11 due, new E2E-09 and a visibility check of the end card's "Try next" targets, incl. 375px); the independent Python oracle agrees on all fixed cases and 1,800 generated ones (new: 300 reconciliations with withdrawals / adjustments, 400 fee payer changes); mutation check below.
+- **Hostile input:** `__proto__` and `constructor` as investor IDs; duplicate investor and fee IDs; hand-edited saves whose marks, adjustments, fees or consent no longer fit.
+- **Full mutation check:** 264/265; the one survivor was an equivalent mutant on redundant code (since round 6 "not covered" is decided by the effective-cash-due check); the redundant code was removed, the mutant pointed at the check that matters, and the re-run passed.
+- **Simulated acceptance (local production build, 1280px and 375px):** M-01, M-02, M-03, M-13 all pass, figures matching the PRD hand calculations and the test plan (e.g. 11 refunds totalling £3,630.00, company-paid platform fee £3,521.10, David's chase text £2,425.00); the decision-12 currency lock works; Reverse restores everything; no sideways page scroll at 375px on the three pages.
+- **CI:** the last commit before merging, `b1c412a`, passed (attempt 3; the first 2 failed while the CI machine installed the Playwright browser — a system update held the package lock, unrelated to the code).
+
+**Reviews**
+
+| Round | Reviewer | Verdict | Findings |
+|---|---|---|---|
+| Self-test | Two fresh-context reviewers (same prompt, half the checklist each) | A ready; B ready after fixes | B: 3 minor (keyboard focus, 375px form, a guide mismatch), plus test gaps |
+| 1 | Codex | Ready after fixes | 1 major: consent ticked for one payer carried over when a fee-table edit switched the payer; 1 minor: screen reader |
+| 2 | Codex | Ready after fixes | 1 minor: "Try next" item 2 focused nothing on a disabled panel; the new browser check then found the end card covering a target |
+| 3 | Codex | Ready after fixes | 1 major: the settings re-check skipped an investor withdrawn and reinstated |
+| 4 | Codex | Ready after fixes | 1 major: a ticked withdrawal consent carried over to a different person imported under the same ID |
+| 5 | Codex | Ready after fixes | 2 major: a row given a withdrawn investor's ID left the refund unflagged; Reverse picked the wrong record in a crafted save |
+| 6 | Codex (asked to report every defect of the kind at once) | Ready after fixes | 3 major, one cause: duplicate IDs, and saved marks / adjustments / changes that no longer fit their data were trusted. Fixed at the cause: duplicate IDs void, the same void checks run on load, a second check at calculation time |
+| 7 | Codex | Ready after fixes | 1 major: a void on load did not make the allocation out of date |
+| 8 | Codex | Ready after fixes | 1 minor: "not covered" not announced |
+| 9 | Codex | Ready after fixes | 2 minor: a withdrawn investor's voided adjustment, and a whole-change void on the allocation page, not shown or announced |
+| 10 | Codex | **READY** | none |
+
+Every finding is fixed with a test and a mutant. The major ones are of one kind: a consent, adjustment, withdrawal mark or refund staying attached after the person or fee it was given for changed. Claude's self-test did not hunt for that kind on purpose in the early rounds, so Codex found them round by round; from round 6 every path of the kind was checked at once.
+
+**Mistakes in the process (Claude):** the first self-test reviewer had no time limit and ran 1 h 43 min with no result; Codex round 1 finished at 10:34 but was picked up only at 13:45, as no timer had been set. Since then every review is time-boxed and a monitor watches for its report.
+
+**Decisions (owner)**
+- Decision 12: lock the currency while a fee payer change is active; reverse first.
+- Guided tour v0.3 §8 item 7: item 2 still shows when the allocation is out of date; the "lower the minimum" text only when exactly one investor is blocked (a clarification while building; no change on the sample).
+- "Accept, merge" (2026-10-27), in reply to the simulated acceptance report and to "is the new interface wording (listed in the PR #27 description) OK?"; Claude recorded Accepted on the PR and merged.
+
+**Links:** PR #27 in the private development repository · review records: kept in the private development repository; summarised in `docs/en/REVIEW_SUMMARY.md`
+
+**Open / next**
+- Release: M5 and M6 are merged, not released. After G3 (full checklist M-01 to M-13, every P0 case, G3 record) and the owner's explicit OK.
+- At 375px, the withdraw form opened from the table's far-right column takes about half a second of smooth scrolling to come into view (it does end in view with focus, tested); not yet checked on a real phone.
+
+## G3 release v1.2.0 (M5 + M6)
+
+**Status:** ✅ Live since 2026-10-27 at https://deal-ops-toolkit.vercel.app (build `index-fWQP9R2X.js`, `release` @ `69f211a`, tag `v1.2.0`). Owner: "merge; OK to release".
+
+**G3 check (`main` @ `96ba252`):** every automated check passed (420 unit, 199/199 due cases, 31 end-to-end, oracle self-check 178/178, mutation 264/265 then cleaned up); the full manual checklist M-01 to M-13 passed, figures matching Test Plan §3 and hand calculations; M-11 walked a made-up 5-investor EUR deal from scratch (incl. a withdrawal, a fee payer preview and a 1.80x exit). The G3 record is kept in the private development repository.
+
+**After release:** production serves the checked build; security headers match `vercel.json`; smoke test (a separate headless browser, the owner's own browser data untouched): sample reconciliation, allocation and exit figures match; copying a chase message, a withdrawal, a fee payer change and its reversal work; 12 requests, all same-origin GETs without bodies or query strings; no console errors.
+
+**Note:** this version saves in a new format (schema 2). Rolling back to v1.1.1 (`release` @ `8734580`) means a browser that used the new version starts empty, as v1.1.x cannot read it.
+
+**Next:** CI failed three times that day installing the browser on the GitHub runner's system-update lock (not the code; re-runs passed); the workflow now waits for the lock. The public repository was refreshed for v1.2.0 on 2026-10-27.
+
+## v0.8.2 Generic wording in the chase message, release v1.2.1
+
+**Status:** ✅ Live since 2026-10-28 (build `index-bxRVcwES.js`, tag `v1.2.1`). Owner: "accept, merge, OK to release".
+
+**What changed:** the paragraph of the chase message (template A) for investors who have already paid now reads: "If you have already sent this payment, please ask your bank for the MT103 (or equivalent) for the transfer, showing its UETR, and send it to us so we can trace the payment." The reconciliation hint and the chasing row of the PRD §1.1 evidence table changed to match. Text only: no calculation, money decision, export format or saved data changed.
+
+**How it was checked:** full review track because it touches `src/lib/messages.ts`. 420 unit tests pass, due cases 199/199, end-to-end 31 (11/11), full mutation 267/267 (2 new); CI success. Self-test reviewer and Codex round 1 both READY AFTER FIXES; all items fixed. G3: automated checks and M-01 to M-03 and M-12 passed; after release the production smoke test and security headers passed. Rollback: v1.2.0 (same saved-data format).

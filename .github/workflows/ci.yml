@@ -27,8 +27,14 @@ jobs:
         run: npm run coverage:check
       - name: Build
         run: npm run build
+      - name: Let apt wait for the dpkg lock
+        # the runner's own apt jobs can hold the lock at start-up ("Could not get lock /var/lib/dpkg/lock-frontend"); make every
+        # apt-get call, including Playwright's, wait up to 5 minutes for it instead of failing (apt's DPkg::Lock::Timeout, 2026-10-27)
+        run: echo 'DPkg::Lock::Timeout "300";' | sudo tee /etc/apt/apt.conf.d/99-dpkg-lock-timeout
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        # the system-package step sometimes hangs on the runner: cap each try at 3 minutes and retry once (Rules G2a, 2026-10-23)
+        timeout-minutes: 14
+        run: timeout 360 npx playwright install --with-deps chromium || timeout 360 npx playwright install --with-deps chromium
       - name: End-to-end tests (production build, production CSP) + milestone coverage
         run: npm run e2e:check
       - uses: actions/upload-artifact@v4

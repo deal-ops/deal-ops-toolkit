@@ -1,4 +1,5 @@
 // PRD v0.7.5 decision 10: currency on input, on import and in every export (Test Plan TC-IO-44..46, TC-ALL-30).
+import Papa from 'papaparse'
 import { describe, expect, it } from 'vitest'
 import { formatMoney, formatPrice, parseMoney, parsePrice } from './money'
 import { importBank, importCommitments, importHoldings, importInvestors } from './csv'
@@ -79,16 +80,17 @@ describe('currency', () => {
     if (!rec.ok || !alloc.ok || !exit.ok) throw new Error('sample did not run')
     const files = [
       ledgerCsv(rec.result, 'EUR'),
-      chaseListCsv(rec.result, 'EUR'),
+      chaseListCsv(rec.result, 'EUR', 'Deal'),
       allocationCsv(alloc.result, 'EUR'),
       distributionCsv(exit.result, SAMPLE_PRICE_MICROS, 'EUR'),
       holdingsCsv(holdings, SAMPLE_PRICE_MICROS, 'EUR'),
     ]
     for (const f of files) {
-      const [header, ...rows] = f.split(/\r?\n/)
-      expect(header.endsWith(',currency')).toBe(true)
+      // read as CSV: the chase list's message column holds line breaks
+      const [header, ...rows] = Papa.parse<string[]>(f, { skipEmptyLines: true }).data
+      expect(header[header.length - 1]).toBe('currency')
       expect(rows.length).toBeGreaterThan(0)
-      for (const r of rows) expect(r.endsWith(',EUR')).toBe(true)
+      for (const r of rows) expect(r[r.length - 1]).toBe('EUR')
     }
     const back = importHoldings(files[4], 'EUR')
     expect(back.ok && back.rows.map((h) => h.capital)).toEqual([970_000, 485_000])

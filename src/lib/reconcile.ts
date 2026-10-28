@@ -50,7 +50,7 @@ export interface LineResult {
   staleDecision: boolean
 }
 
-export type CommitmentStatus = 'paid' | 'partial' | 'overpaid' | 'outstanding'
+export type CommitmentStatus = 'paid' | 'partial' | 'overpaid' | 'outstanding' | 'withdrawn'
 
 export interface CommitmentResult {
   commitment: Commitment
@@ -58,13 +58,31 @@ export interface CommitmentResult {
   difference: number
   status: CommitmentStatus
   lineIds: string[]
+  /** effective cash due (C-ALL-11): the list value unless an active fee payer change adjusts it */
+  due: number
+  /** C-REC-7: the withdrawal date, or null */
+  withdrawnOn: string | null
+  /** withdrawn: everything received; otherwise max(0, received − due) */
+  refund: number
+}
+
+export interface RefundDue {
+  id: string
+  name: string
+  amount: number
+  reason: 'Withdrawn' | 'Over-paid'
 }
 
 export interface ReconcileResult {
   lines: LineResult[]
   commitments: CommitmentResult[]
-  totals: { bank: number; booked: number; unbooked: number; cashDue: number }
+  /** cashDue: effective cash due of investors not withdrawn (R-REC-11.2) */
+  totals: { bank: number; booked: number; unbooked: number; cashDue: number; withdrawn: { count: number; toRefund: number } }
   pendingSuggestions: number
+  /** in list order: withdrawn investors with money received, and over-payments (C-REC-7) */
+  refunds: RefundDue[]
+  /** investors the active fee payer change does not cover (C-REC-7): reconciliation stays in review */
+  notCovered: string[]
 }
 
 export interface ReconcileInput {
@@ -73,6 +91,12 @@ export interface ReconcileInput {
   decisions: Decisions
   asOf: string
   thresholdDays: number
+  /** C-REC-7: investor ID → withdrawal date */
+  withdrawn?: Record<string, string>
+  /** C-ALL-11: investor ID → effective cash due, only where it differs from the list */
+  due?: Record<string, number>
+  /** C-REC-7: investors not covered by the active fee payer change */
+  notCovered?: string[]
 }
 
 // ---------- C-REC-1/2: references ----------
@@ -232,6 +256,17 @@ export function validateReconcile(input: ReconcileInput): InputError[] {
     e.text(l.reference, `${where}, reference`, LIMITS.freeText, false)
   })
   e.date(input.asOf, 'asOf')
+  // marks and adjustments must name investors on the list (prototype-free reads: an ID like "__proto__" is data)
+  const ids = new Set(input.commitments.map((c) => c.id))
+  for (const [id, on] of Object.entries(input.withdrawn ?? {})) {
+    if (!ids.has(id)) e.add('withdrawn', `no investor "${id}"`)
+    e.date(on, `withdrawn ${id}`)
+  }
+  for (const [id, v] of Object.entries(input.due ?? {})) {
+    if (!ids.has(id)) e.add('due', `no investor "${id}"`)
+    e.money(v, `due ${id}`, 1)
+  }
+  for (const id of input.notCovered ?? []) if (!ids.has(id)) e.add('notCovered', `no investor "${id}"`)
   if (!Number.isInteger(input.thresholdDays) || input.thresholdDays < 1 || input.thresholdDays > 365) e.add('thresholdDays', 'must be 1–365')
   return e.list
 }
@@ -240,6 +275,11 @@ export function reconcile(input: ReconcileInput): Outcome<ReconcileResult> {
   const errors = validateReconcile(input)
   if (errors.length) return { ok: false, errors }
   const { commitments, lines, decisions, asOf, thresholdDays } = input
+  const dueMap = input.due ?? {}
+  const withdrawnMap = input.withdrawn ?? {}
+  // C-ALL-11: everything below uses the effective cash due; the list value stays on the commitment (decision fingerprints)
+  const due = (c: Commitment) => (Object.hasOwn(dueMap, c.id) ? dueMap[c.id] : c.cashDue)
+  const withdrawnOn = (c: Commitment) => (Object.hasOwn(withdrawnMap, c.id) ? withdrawnMap[c.id] : null)
   const byRef = new Map(commitments.map((c) => [normRef(c.reference), c]))
   const byId = new Map(commitments.map((c) => [c.id, c]))
 
@@ -307,8 +347,8 @@ export function reconcile(input: ReconcileInput): Outcome<ReconcileResult> {
       }
       const { matched, of } = tokenMatch(payer, name)
       if (matched > 0) reasons.push(matched === of ? 'payer name matches' : 'payer name partly matches')
-      const outstanding = c.cashDue - (bookedSoFar.get(c.id) ?? 0)
-      if (d.line.amount === c.cashDue || (outstanding > 0 && d.line.amount === outstanding)) {
+      const outstanding = due(c) - (bookedSoFar.get(c.id) ?? 0)
+      if (d.line.amount === due(c) || (outstanding > 0 && d.line.amount === outstanding)) {
         twentieths += 5
         reasons.push('amount matches')
       }
@@ -333,18 +373,35 @@ export function reconcile(input: ReconcileInput): Outcome<ReconcileResult> {
   const commitmentResults: CommitmentResult[] = commitments.map((c) => {
     const mine = byCommitment.get(c.id) ?? []
     const received = sum(mine.map((r) => r.line.amount))
-    const difference = received - c.cashDue
-    const status: CommitmentStatus = received === 0 ? 'outstanding' : difference === 0 ? 'paid' : difference < 0 ? 'partial' : 'overpaid'
-    return { commitment: c, received, difference, status, lineIds: mine.map((r) => r.line.id) }
+    const difference = received - due(c)
+    const on = withdrawnOn(c)
+    // a withdrawal comes before every other status (C-REC-7); the receipts still book to the investor (R-REC-11.3)
+    const status: CommitmentStatus =
+      on !== null ? 'withdrawn' : received === 0 ? 'outstanding' : difference === 0 ? 'paid' : difference < 0 ? 'partial' : 'overpaid'
+    const refund = on !== null ? received : Math.max(0, difference)
+    return { commitment: c, received, difference, status, lineIds: mine.map((r) => r.line.id), due: due(c), withdrawnOn: on, refund }
   })
+  const out = commitmentResults.filter((c) => c.withdrawnOn !== null)
+  const refunds: RefundDue[] = commitmentResults
+    .filter((c) => c.refund > 0)
+    .map((c) => ({ id: c.commitment.id, name: c.commitment.name, amount: c.refund, reason: c.withdrawnOn !== null ? 'Withdrawn' : 'Over-paid' }))
+  const notCovered = (input.notCovered ?? []).filter((id) => !Object.hasOwn(withdrawnMap, id))
   const bank = sum(inScope.map((r) => r.line.amount))
   const booked = sum(inScope.filter((r) => r.assignedTo).map((r) => r.line.amount))
   const pendingSuggestions = results.filter((r) => r.status === 'suggested').length
   const result: ReconcileResult = {
     lines: results,
     commitments: commitmentResults,
-    totals: { bank, booked, unbooked: bank - booked, cashDue: sum(commitments.map((c) => c.cashDue)) },
+    totals: {
+      bank,
+      booked,
+      unbooked: bank - booked,
+      cashDue: sum(commitments.filter((c) => withdrawnOn(c) === null).map(due)),
+      withdrawn: { count: out.length, toRefund: sum(out.map((c) => c.received)) },
+    },
     pendingSuggestions,
+    refunds,
+    notCovered,
   }
   const checks: Check[] = [
     {
@@ -360,6 +417,26 @@ export function reconcile(input: ReconcileInput): Outcome<ReconcileResult> {
       pass: pendingSuggestions === 0,
       detail: `${pendingSuggestions} waiting for review`,
     },
+    {
+      // C-REC-7: worked out again from the investors, not from the refund list (two separate paths)
+      id: 'refunds-tie',
+      kind: 'invariant',
+      label: 'Refunds = everything withdrawn investors paid + every over-payment',
+      pass:
+        sum(refunds.map((x) => x.amount)) ===
+        sum(commitmentResults.map((c) => (withdrawnOn(c.commitment) !== null ? c.received : Math.max(0, c.received - due(c.commitment))))),
+    },
+    ...(notCovered.length
+      ? [
+          {
+            id: 'fee-change-coverage',
+            kind: 'review' as const,
+            pass: false,
+            label: 'Every investor is covered by the active fee payer change',
+            detail: `${notCovered.length} not covered: reverse the fee payer change and redo it`,
+          },
+        ]
+      : []),
     ...results
       .filter((r) => r.aged)
       .map(
@@ -381,18 +458,20 @@ export const AGED_NOTE = 'Operational reminder, not a regulatory deadline and no
 
 export interface Handoff {
   investors: { id: string; name: string; received: number; scheme: 'none' | 'SEIS' | 'EIS' }[]
-  excess: { id: string; name: string; amount: number }[]
+  excess: RefundDue[]
 }
 
 export function handoffToAllocation(r: ReconcileResult): { ok: true; value: Handoff } | { ok: false; reason: string } {
   if (r.pendingSuggestions > 0) return { ok: false, reason: `Review the ${r.pendingSuggestions} suggested match(es) first.` }
+  if (r.notCovered.length > 0) return { ok: false, reason: 'Reverse the fee payer change and redo it: it does not cover every investor.' }
   return {
     ok: true,
     value: {
-      investors: r.commitments.map((c) => ({ id: c.commitment.id, name: c.commitment.name, received: Math.min(c.received, c.commitment.cashDue), scheme: c.commitment.scheme })),
-      excess: r.commitments
-        .filter((c) => c.received > c.commitment.cashDue)
-        .map((c) => ({ id: c.commitment.id, name: c.commitment.name, amount: c.received - c.commitment.cashDue })),
+      // withdrawn investors are not carried in; all they paid is in the refunds (C-REC-6, C-REC-7)
+      investors: r.commitments
+        .filter((c) => c.withdrawnOn === null)
+        .map((c) => ({ id: c.commitment.id, name: c.commitment.name, received: Math.min(c.received, c.due), scheme: c.commitment.scheme })),
+      excess: r.refunds,
     },
   }
 }

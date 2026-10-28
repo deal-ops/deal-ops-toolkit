@@ -7,10 +7,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { allocate, type AllocationInput, type Fee } from './allocation'
 import { distribute, type WaterfallInput } from './waterfall'
-import { decide, reconcile, type BankLine, type Commitment, type Decisions } from './reconcile'
+import { decide, handoffToAllocation, reconcile, type BankLine, type Commitment, type Decisions } from './reconcile'
+import { previewFeePayerChange, type FeePayerInput } from './feePayer'
 import { SAMPLE_BANK, SAMPLE_CAP, SAMPLE_COMMITMENTS, SAMPLE_EXIT, SAMPLE_FEES, SAMPLE_PRICE_MICROS } from './sample'
 
-type Case = Record<string, unknown> & { kind: 'allocation' | 'waterfall' | 'reconcile' }
+type Case = Record<string, unknown> & { kind: 'allocation' | 'waterfall' | 'reconcile' | 'feePayerChange' }
 
 // ---------- TypeScript side, in the oracle's output shape (scripts/oracle/SCHEMA.md) ----------
 
@@ -79,10 +80,16 @@ function tsReconcile(c: Case) {
     const line = lines.find((l) => l.id === id)!
     decisions[id] = decide(line, d.assign ? commitments.find((x) => x.id === d.assign)! : null)
   }
-  const o = reconcile({ commitments, lines, decisions, asOf: c.asOf as string, thresholdDays: c.thresholdDays as number })
+  // v0.8 (SCHEMA.md "reconcile — v0.8 extension"): withdrawal marks (the date plays no part) and effective cash due
+  const extended = 'withdrawn' in c || 'adjustedCashDue' in c
+  const withdrawn: Record<string, string> = Object.create(null)
+  for (const id of (c.withdrawn as string[] | undefined) ?? []) withdrawn[id] = '2026-10-16'
+  const due: Record<string, number> = Object.assign(Object.create(null), c.adjustedCashDue ?? {})
+  if (new Set((c.withdrawn as string[] | undefined) ?? []).size !== ((c.withdrawn as string[] | undefined) ?? []).length) return { ok: false }
+  const o = reconcile({ commitments, lines, decisions, asOf: c.asOf as string, thresholdDays: c.thresholdDays as number, ...(extended ? { withdrawn, due } : {}) })
   if (!o.ok) return { ok: false }
   const r = o.result
-  return {
+  const base = {
     lines: Object.fromEntries(
       r.lines.map((l) => [
         l.line.id,
@@ -98,9 +105,79 @@ function tsReconcile(c: Case) {
     totals: { bank: r.totals.bank, booked: r.totals.booked, unbooked: r.totals.unbooked },
     aged: r.lines.filter((l) => l.aged).map((l) => l.line.id).sort(),
   }
+  if (!extended) return base
+  // the C-REC-6 snapshot formula, asked of the engine even while suggestions are open (the oracle has no review gate)
+  const h = handoffToAllocation({ ...r, pendingSuggestions: 0, notCovered: [] })
+  if (!h.ok) throw new Error(h.reason)
+  return {
+    ...base,
+    commitments: Object.fromEntries(
+      r.commitments.map((x) => [x.commitment.id, { received: x.received, difference: x.difference, status: x.status, cashDue: x.due, withdrawn: x.withdrawnOn !== null }]),
+    ),
+    refunds: r.refunds.map((x) => ({ id: x.id, amount: x.amount, reason: x.reason === 'Withdrawn' ? 'withdrawn' : 'overpayment' })),
+    refundTotal: r.refunds.reduce((a, b) => a + b.amount, 0),
+    receivable: r.totals.cashDue,
+    withdrawnSummary: { count: r.totals.withdrawn.count, refund: r.totals.withdrawn.toRefund },
+    chase: r.commitments.filter((x) => x.status === 'partial' || x.status === 'outstanding').map((x) => ({ id: x.commitment.id, outstanding: x.due - x.received })),
+    handoff: Object.fromEntries(h.value.investors.map((v) => [v.id, v.received])),
+    // an invariant that failed would have made the outcome an internal error
+    checks: { refundIdentity: o.checks.some((k) => k.id === 'refunds-tie' && k.pass) },
+  }
 }
 
-const tsRun = (c: Case) => (c.kind === 'allocation' ? tsAllocation(c) : c.kind === 'waterfall' ? tsWaterfall(c) : tsReconcile(c))
+function tsFeePayer(c: Case) {
+  const x = c as unknown as FeePayerInput & { newPayer: FeePayerInput['to']; investors: { id: string; cashDue: number; scheme: 'none' }[] }
+  const o = previewFeePayerChange({
+    feeBasis: x.feeBasis,
+    minimum: x.minimum,
+    cap: x.cap,
+    priceMicros: x.priceMicros,
+    fees: x.fees.map((f) => ({ ...f, label: f.id })),
+    feeId: x.feeId,
+    to: x.newPayer,
+    investors: x.investors.map((v) => ({ ...v, name: v.id })),
+    ...(x.applied ? { applied: x.applied } : {}),
+  })
+  if (!o.ok) return o.internal ? { internal: true } : { ok: false }
+  const p = o.result
+  const n = (v: number | null) => (p.computed ? v : null)
+  return {
+    ok: true,
+    canApply: p.canApply,
+    // the engine's own blockers are deal-level in the oracle's shape: one entry per code, no investor (SCHEMA.md)
+    blockers: [...new Map(p.blockers.map((b) => (/^(before|after)-/.test(b.code) ? { code: b.code, investor: null } : { code: b.code, investor: b.investorId })).map((b) => [`${b.code}|${b.investor}`, b])).values()]
+      .sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : (a.investor ?? '') < (b.investor ?? '') ? -1 : 1)),
+    investors: Object.fromEntries(
+      p.rows.map((r) => [
+        r.id,
+        {
+          cashDue: r.currentDue,
+          participatingBefore: r.participatingBefore,
+          unchanged: p.computed ? r.unchanged : null,
+          target: n(r.target),
+          newCashDue: n(r.newDue),
+          difference: n(r.difference),
+          participatingAfter: p.computed ? r.participatingAfter : null,
+          investedAfter: n(r.investedAfter),
+        },
+      ]),
+    ),
+    feeBefore: p.feeBefore,
+    feeAfter: p.feeAfter,
+    totals: {
+      cashDue: p.totals.currentDue,
+      newCashDue: n(p.totals.newDue),
+      difference: n(p.totals.difference),
+      topUpCount: n(p.totals.topUps),
+      topUpTotal: n(p.totals.topUpTotal),
+      refundCount: n(p.totals.refunds),
+      refundTotal: n(p.totals.refundTotal),
+    },
+  }
+}
+
+const tsRun = (c: Case) =>
+  c.kind === 'allocation' ? tsAllocation(c) : c.kind === 'waterfall' ? tsWaterfall(c) : c.kind === 'feePayerChange' ? tsFeePayer(c) : tsReconcile(c)
 
 function pyRun(cases: Case[]): unknown[] {
   const dir = mkdtempSync(join(tmpdir(), 'oracle-'))
@@ -206,6 +283,57 @@ function genReconcile(r: () => number, i: number): Case {
   return { kind: 'reconcile', id: `rec-${i}`, asOf: '2026-10-16', thresholdDays: int(1, 12), commitments, lines, decisions }
 }
 
+/** v0.8: the same reconciliations with some investors withdrawn and some cash due adjusted (C-REC-7, C-ALL-11). */
+function genReconcileV08(r: () => number, i: number): Case {
+  const c = genReconcile(r, i)
+  const ids = (c.commitments as { id: string; cashDue: number }[]).map((x) => x.id)
+  const withdrawn = ids.filter(() => r() < 0.3)
+  const adjustedCashDue: Record<string, number> = {}
+  for (const x of c.commitments as { id: string; cashDue: number }[]) if (r() < 0.4) adjustedCashDue[x.id] = Math.max(1, Math.round(x.cashDue * (0.9 + r() * 0.2)))
+  return { ...c, id: `rec08-${i}`, withdrawn, adjustedCashDue }
+}
+
+/** C-ALL-10: random fee tables, both bases, with caps and minimums; some re-checks of an applied change (C-ALL-11). */
+function genFeePayer(r: () => number, i: number): Case {
+  const int = (lo: number, hi: number) => lo + Math.floor(r() * (hi - lo + 1))
+  const payers = ['investors', 'company', 'lead'] as const
+  const fees: Fee[] = []
+  for (let k = int(1, 3); k > 0; k--) fees.push({ id: `p${fees.length}`, label: '', kind: 'percent', value: int(0, 1500), payer: payers[int(0, 2)] })
+  if (r() < 0.4) fees.push({ id: `q${fees.length}`, label: '', kind: 'perInvestor', value: int(1, 3_000), payer: 'investors' })
+  if (r() < 0.3) fees.push({ id: `c${fees.length}`, label: '', kind: 'fixed', value: int(1, 200_000), payer: 'company' })
+  const pick = fees.filter((f) => f.kind === 'percent')[int(0, fees.filter((f) => f.kind === 'percent').length - 1)]
+  const others = payers.filter((p) => p !== pick.payer)
+  const investors = Array.from({ length: int(1, 8) }, (_, j) => ({ id: `i${j}`, cashDue: int(1, 3_000_000), scheme: 'none' as const }))
+  const demand = investors.reduce((a, b) => a + b.cashDue, 0)
+  const c: Case = {
+    kind: 'feePayerChange',
+    id: `fpc-${i}`,
+    feeBasis: r() < 0.5 ? 'deducted' : 'onTop',
+    minimum: r() < 0.5 ? 0 : int(1, 500_000),
+    cap: r() < 0.7 ? null : int(1, Math.max(1, demand)),
+    priceMicros: [1_000_000, 2_413_700, int(1, 50_000_000)][int(0, 2)],
+    fees,
+    feeId: pick.id,
+    newPayer: others[int(0, 1)],
+    investors,
+  }
+  if (r() < 0.25) {
+    // re-check: apply it, then change a setting; both sides run step 3 only, with the saved T_i and N_i
+    const first = previewFeePayerChange({ ...(c as unknown as FeePayerInput), to: c.newPayer as FeePayerInput['to'], fees: fees.map((f) => ({ ...f, label: f.id })), investors: investors.map((v) => ({ ...v, name: v.id })) })
+    if (first.ok && first.result.canApply) {
+      const targets: Record<string, number> = {}
+      const newCashDue: Record<string, number> = {}
+      for (const x of first.result.rows) if (x.target !== null) {
+        targets[x.id] = x.target
+        newCashDue[x.id] = x.newDue
+      }
+      const after = fees.map((f) => (f.id === pick.id ? { ...f, payer: c.newPayer as Fee['payer'] } : f))
+      return { ...c, id: `fpc-applied-${i}`, fees: r() < 0.5 ? after : [...after, { id: 'z', label: '', kind: 'perInvestor', value: int(1, 2_000), payer: 'investors' }], minimum: r() < 0.5 ? c.minimum : int(0, 300_000), applied: { targets, newCashDue } }
+    }
+  }
+  return c
+}
+
 // ---------- fixed cases: hand calculations and the sample deal ----------
 
 const W = (over: Record<string, unknown>): Case => ({
@@ -282,6 +410,32 @@ const FIXED: Case[] = [
     lines: SAMPLE_BANK,
     decisions: { t03: { assign: 'c03' }, t05: { assign: 'c05' }, t12: { assign: 'c11' }, t11: { reject: true }, t14: { reject: true } },
   },
+  // v0.8: TC-REC-47 (Lucas withdrawn after review) and the sample's platform fee moved to the company (TC-ALL-35)
+  {
+    kind: 'reconcile',
+    asOf: '2026-10-16',
+    thresholdDays: 10,
+    commitments: SAMPLE_COMMITMENTS.map(({ id, name, reference, cashDue }) => ({ id, name, reference, cashDue })),
+    lines: SAMPLE_BANK,
+    decisions: { t03: { assign: 'c03' }, t05: { assign: 'c05' }, t12: { assign: 'c11' }, t11: { reject: true }, t14: { reject: true } },
+    withdrawn: ['c12'],
+    adjustedCashDue: { c01: 970_000 },
+  },
+  ...[100_000, 97_000].map(
+    (minimum): Case => ({
+      kind: 'feePayerChange',
+      feeBasis: 'deducted',
+      minimum,
+      cap: SAMPLE_CAP,
+      priceMicros: SAMPLE_PRICE_MICROS,
+      fees: SAMPLE_FEES,
+      feeId: 'f1',
+      newPayer: 'company',
+      investors: SAMPLE_COMMITMENTS.map((x) => ({ id: x.id, cashDue: x.cashDue, scheme: x.scheme })),
+    }),
+  ),
+  { kind: 'feePayerChange', feeBasis: 'deducted', minimum: 0, cap: null, priceMicros: 1_000_000, fees: [{ id: 'f', label: 'f', kind: 'percent', value: 300, payer: 'company' }], feeId: 'f', newPayer: 'investors', investors: [{ id: 'a', cashDue: 100_000, scheme: 'none' }] },
+  { kind: 'feePayerChange', feeBasis: 'deducted', minimum: 0, cap: 8_000_000, priceMicros: SAMPLE_PRICE_MICROS, fees: SAMPLE_FEES, feeId: 'f1', newPayer: 'company', investors: SAMPLE_COMMITMENTS.map((x) => ({ id: x.id, cashDue: x.cashDue, scheme: x.scheme })) },
 ]
 
 describe('independent oracle agreement', () => {
@@ -291,6 +445,8 @@ describe('independent oracle agreement', () => {
     ...Array.from({ length: 400 }, (_, i) => genAllocation(r, i)),
     ...Array.from({ length: 400 }, (_, i) => genWaterfall(r, i)),
     ...Array.from({ length: 300 }, (_, i) => genReconcile(r, i)),
+    ...Array.from({ length: 300 }, (_, i) => genReconcileV08(r, i)),
+    ...Array.from({ length: 400 }, (_, i) => genFeePayer(r, i)),
   ]
   const py = pyRun(cases)
 
@@ -298,7 +454,7 @@ describe('independent oracle agreement', () => {
     FIXED.forEach((c, i) => expect(tsRun(c), `fixed case ${i} (${c.kind})`).toEqual(py[i]))
   })
 
-  it('ORACLE-02 1,100 generated cases agree field by field', () => {
+  it('ORACLE-02 1,800 generated cases agree field by field (v0.8: withdrawals, adjusted cash due, fee payer changes)', () => {
     const mismatches: string[] = []
     cases.forEach((c, i) => {
       if (i < FIXED.length) return
@@ -312,6 +468,10 @@ describe('independent oracle agreement', () => {
   it('ORACLE-03 generated cases are mostly valid (the generator is not testing only error paths)', () => {
     const valid = py.filter((o) => (o as { ok?: boolean }).ok !== false).length
     expect(valid / py.length).toBeGreaterThan(0.95)
+    // the fee payer cases reach step 3 often enough, and some can be applied: not only the blocked paths (M6 self-test B)
+    const fp = py.filter((o, i) => cases[i].kind === 'feePayerChange' && (o as { ok?: boolean }).ok !== false) as { canApply: boolean; feeAfter: number | null }[]
+    expect(fp.filter((o) => o.feeAfter !== null).length / fp.length).toBeGreaterThan(0.5)
+    expect(fp.filter((o) => o.canApply).length / fp.length).toBeGreaterThan(0.2)
   })
 })
 

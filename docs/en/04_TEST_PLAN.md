@@ -1,15 +1,16 @@
-English snapshot of docs/04_TEST_PLAN.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated at v1.1.0 on 2026-10-21 and for v1.1.1 on 2026-10-23.
+English snapshot of docs/04_TEST_PLAN.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated at v1.1.0 on 2026-10-21, for v1.1.1 on 2026-10-23 and for the v0.8 documents on 2026-10-25.
 
 The scripts that check test coverage read the Chinese file; this English file is for reading.
 
 # Deal Ops Toolkit — Test Plan
 
-Version v0.7.2 (last revised 2026-10-23) · 2026-10-17 · Status: **Approved (2026-10-17)** · Based on: PRD v0.7
+Version v0.8 (last revised 2026-10-25; based on PRD v0.8, passed 3 rounds of Codex review, approved by the owner 2026-10-25) · 2026-10-17 · Status: **Approved (2026-10-17)** · Based on: PRD v0.7
 
 - v0.1 → v0.2: changed per Codex review #16 #17 #21 #24: each acceptance point maps to a test; independent recalculation extended to adversarial cases; new cases for boundaries, invalid input, formats and end-to-end; sample deal rewritten under the v0.2 default conventions, with numbers that can be frozen. All hand-calculated numbers were rechecked with Python `decimal`.
 - v0.2 → v0.3: added cases per round 2 R2-01/04/05/08/09/10/11/12/13; each case tagged with its due milestone; reset steps added to the manual checklist; default conditions for exit distribution written out in full.
 - v0.7 → v0.7.1 (2026-10-20, clarification): §6 exported negative amounts keep their minus sign.
 - v0.7.1 → v0.7.2 (2026-10-23): added TC-X-04 (PRD v0.7.6 R-X-02, save failures reported by cause).
+- v0.7.2 → v0.8 (2026-10-23, approved 2026-10-25): added §2.5 (PRD v0.8: TC-REC-42 to 54, TC-ALL-31 to 49, TC-IO-47, TC-X-05 to 20, milestones 〔M5〕〔M6〕), E2E-08/09, M-12/13 and 4 traceability rows; independent recalculation adds C-ALL-10 and withdrawal in M6.
 
 ---
 
@@ -208,6 +209,65 @@ Unless stated: fixed mode; k 20%; h 0; c 0; exit costs 0; n 5; capital A £60,00
 | TC-X-03 〔M4〕 | R-X-04 | Theme switch: default → choose Dark → reopen → Clear all data | Default is System and the page carries no theme mark; after Dark the page is marked dark and is still Dark after reopening; after "Clear all data" it is back to System and no theme is stored | — |
 | TC-X-04 〔M4〕 | R-X-02 | Saving in the browser: ① storage throws `QuotaExceededError` (including Firefox's `NS_ERROR_DOM_QUOTA_REACHED` and older browsers' code 22 / 1014); ② it throws another error (such as `SecurityError`), or the browser already refuses when `localStorage` is read (the usual case when site data is blocked), or `localStorage` is `null`; ③ saving then succeeds again | ① the "storage for this page is full" sentence shows, not "storage is blocked"; ② the "storage is blocked" sentence shows; ③ the message goes away; the message sits in a status region that screen readers announce; the app never fails in any case | — |
 
+
+### 2.5 v0.8: chase and query messages, activity log, withdrawal, fee payer change (PRD v0.8, decision 11)
+
+Due milestones: 〔M5〕 = the first v0.8 PR (chasing payments: R-REC-10, R-X-08, R-X-01.2); 〔M6〕 = the second PR (changes before closing: R-REC-11, R-REC-12, R-ALL-12). "Sample" means the sample deal (§3: deadline 2026-10-16, minimum £1,000, 3% platform fee paid by investors and deducted from the payment, £1,500 legal fee paid by the company, cap £150,000); "after review" means after confirming t03, t05, t12 and rejecting t11, t14. Time comes from a fixed clock injected by the test, never from the system clock.
+
+| ID | Covers | Input | Expected |
+|---|---|---|---|
+| TC-REC-42 〔M5〕 | C-REC-8 template A | Sample after review, David Kim (due £2,500, received £2,000, reference NW-004) | The text is exactly: `Hi David Kim,` blank line `For Northwind Robotics — Seed SPV (fictional sample), we have received £2,000.00 GBP of the £2,500.00 GBP due from you, so £500.00 GBP is still outstanding. Please pay it using the payment reference NW-004 exactly as written.` blank line the second paragraph of template A verbatim blank line `Thank you.` |
+| TC-REC-43 〔M5〕 | C-REC-8 template A | James Whitfield in the sample (received £0: t16 is after the deadline); the same roster as a USD deal | The first sentence is `For Northwind Robotics — Seed SPV (fictional sample), we have not yet received the £20,000.00 GBP due from you.`, the rest has the same structure as TC-REC-42; in USD the amount reads `US$20,000.00 USD` |
+| TC-REC-44 〔M5〕 | C-REC-8 template B, R-REC-10.2 | Sample t03 (£20,000.00, 2026-10-07, payer CHLOE MARTIN) against the candidate Chloe Martin; plus a made-up bank line: payer `BEN OKAFOR`, reference `NW-002 =cmd`, transaction ID `T-SECRET`, candidate Amelia Hart | First: `we received a payment of £20,000.00 GBP on 7 October 2026 that we could not match…`, exactly template B; the second text contains none of `BEN OKAFOR`, `NW-002`, `=cmd`, `T-SECRET` |
+| TC-REC-45 〔M5〕 | R-REC-10.1, I-09 | Export the chase list CSV from the sample after review; in another roster one person is named `=HYPERLINK("x")` | Each row has an extra `message` column equal to that person's template A text (line breaks included, quoted per CSV rules); a name starting with `=` is escaped in the `name` column; the `message` column starts with `Hi ` and needs no escaping |
+| TC-REC-46 〔M5〕 | R-REC-10.1–10.3 | UI: before review, click "Copy query" for Chloe under t03; after review, click "Copy message" for David | The clipboard holds the texts of TC-REC-44 and TC-REC-42 respectively; then "Copied. Send it yourself from your usual email." shows; the page has no `mailto:` link to the investor and opens no new window; when the clipboard is unavailable the text is selected for manual copying |
+| TC-X-05 〔M5〕 | C-X-1, R-X-08.1/08.3 | Enter initials `HY` in deal settings; load the sample → 5 review steps → carry into allocation → copy one chase message | The entries, in order, are `sample_loaded`, `confirm`×3, `not_in_deal`×2, `handoff_allocation`, `message_copied`; `seq` runs on from 1 with no gaps; `time` is the injected clock in ISO 8601 with a time-zone offset; every entry has initials `HY` (loading the sample does not clear initials, PRD field table); the `handoff_allocation` detail has the snapshot version, head count and total; `message_copied` does not contain the text itself |
+| TC-X-06 〔M5〕 | C-X-1 | After review, change the amount of t03; then type into an investor's name 5 times in a row | One `decision_voided` entry, reason: the bank line changed; typing a name produces no entries |
+| TC-X-07 〔M5〕 | C-X-1 capacity, R-X-08.4 | The engine builds 3,999 / 4,000 / 5,000 / 5,001 entries directly; export once at entry 4,500 | No notice at 3,999; the 80% notice from 4,000; at 5,001 the oldest is deleted and the first entry is `truncated`, giving the number deleted, the `seq` range and that all were exported; `seq` values are never reused; if the deleted entries include unexported ones the notice becomes "N entries were removed before export."; the action always completes as normal |
+| TC-X-08 〔M5〕 | R-X-08.5, R-X-02 | On save: the first `setItem` throws `QuotaExceededError` and succeeds after some entries are deleted; in another case it still fails after deleting entries | The first saves, a `truncated` entry appears, and "storage full" is not shown; the second shows the R-X-02 "storage for this page is full" sentence; in both cases no deal data is lost |
+| TC-X-09 〔M5〕 | R-X-08.2, §5.5 | Export the activity log CSV; "Clear all data"; then "Load sample" | The header is exactly `seq,time,initials,event,investor_id,investor_name,transaction_id,amount,detail,currency`; text columns are escaped per I-09; the export writes a `log_exported` entry; after clearing the log is empty; after loading the sample there is only one `sample_loaded` entry |
+| TC-X-10 〔M5〕 | Saving in the browser | Saved data in the v1.1.1 format (no log, withdrawal or fee payer change fields) | Loads normally with the new fields empty; deal data intact |
+| TC-X-11 〔M5〕 | R-X-01.2, C-X-1 | The tour script; "Do this for me" all the way to the end; then jump back to chapter 1 and walk it again | Still 12 steps; step 6 has one extra sentence introducing "Copy message", step 2 is unchanged; the end card has the Activity log sentence and "Try next" item 3 (undo a decision to see Copy query), and its links open the pages and controls given in the guided tour design v0.3; the log has every decision the tour made, with detail `guided tour`; after jumping back the log starts again from `sample_loaded`, with no duplicates |
+| TC-X-12 〔M6〕 | R-X-01.2 | The tour end card; the withdrawal and fee payer change panels | "Try next" items 1 and 2 appear with the wording of the guided tour design v0.3, amounts read from the calculation results (£3,000.00, £1,000.00, £970.00); the links only take you to the control and change no data; each panel has one sentence of explanation |
+| TC-X-20 〔M6〕 | R-X-01.2 end card item 2 | After finishing the tour: ① no change; ② change the cap to £80,000; ③ change James Whitfield's amount due to £980 and carry again | ① item 2 shows, including "lower the minimum commitment (Deal settings) to £970.00"; ② and ③ do not show item 2 (in ③ the preview computed separately with minimum £970 is still blocked: James's step 1 T = £950.60, and in step 3 £950.60 < £970 so he is excluded) |
+| TC-REC-47 〔M6〕 | C-REC-7, R-REC-11.2 | After review, mark Lucas Meyer (received £3,000) as withdrawn (consent ticked, date defaults to 2026-10-16) | Status Withdrawn; not on the chase list; after carrying into allocation Lucas is not in it; pending refunds include Lucas £3,000.00 with reason `Withdrawn`; total due is £3,000.00 lower; the summary shows "Withdrawn: 1 investor, £3,000.00 to refund"; new check: pending refunds total = £3,000.00 + Hugo's overpayment £5,000.00 = £8,000.00 |
+| TC-REC-48 〔M6〕 | R-REC-11.1 | Click confirm without ticking consent; withdrawal date `31/02/2026`; undo after marking | The first two cannot be marked and say why; after undo back to Paid in full; the log has `withdrawn` then `withdrawal_undone` |
+| TC-REC-49 〔M6〕 | C-REC-7 voiding | After Lucas withdraws: ① change his name, email and amount due; ② change his payment reference; ③ delete him; ④ replace the whole roster by import with Lucas's ID and reference unchanged | ① and ④ keep the withdrawal; ② and ③ void it and log `withdrawal_voided` (with the reason) |
+| TC-REC-50 〔M6〕 | R-REC-11.3 | After Lucas withdraws, append a bank line: date 2026-10-16 (not after the deadline), £500, reference `NW-012` | Auto-matched to Lucas; pending refund becomes £3,500.00 |
+| TC-REC-51 〔M6〕 | C-REC-7 | In the sample, mark James Whitfield (received £0) as withdrawn | Not on the chase list, not in pending refunds; total due is £20,000.00 lower |
+| TC-REC-52 〔M6〕 | R-X-07, C-REC-7 | After carrying into allocation, mark, undo and void a withdrawal once each | After each, allocation shows "out of date, carry again" |
+| TC-ALL-31 〔M6〕 | C-ALL-10 example 1 | Deducted from payment, minimum 0, no cap, a single 3% fee; amount due £1,000.00; investors pay → company pays | T £970.00; N £970.00; difference −£30.00; that fee £30.00 before (paid by investors), £29.10 after (paid by the company) |
+| TC-ALL-32 〔M6〕 | C-ALL-10 example 2 | As above, company pays → investors pay | T £1,000.00; N £1,030.93 (at £1,030.92 the investment is £999.99); difference +£30.93; investor fee £30.93, refund £0.00 |
+| TC-ALL-33 〔M6〕 | C-ALL-10 example 3, R-ALL-12.4 | Example 1 but minimum £1,000 | Step 3 blocks, naming the investor and "would fall below the minimum commitment"; as there is only this one investor, the "no investors to allocate" block also shows; cannot apply |
+| TC-ALL-34 〔M6〕 | C-ALL-10 | ① On top, 3% company pays → investors pay, amount due £1,000.00; ② deducted from payment, a per-investor fixed fee £25 + 2% paid by investors, amount due £1,025.00, change the 2% to company pays | ① T £1,000.00, N £1,030.00 (⌊1,030.00 ÷ 1.03⌋ = £1,000.00, fee £30.00), difference +£30.00; ② T £980.00 (fees £20.00 + £25.00, refund 0), N £1,005.00, difference −£20.00 |
+| TC-ALL-35 〔M6〕 | C-ALL-10, sample | Carry the sample after review; change the platform fee to company pays; then change the minimum to £970 and recompute | First blocked (Isla Campbell, N £970.00 below £1,000); with minimum £970 the 12 people have N = amount due × 97%, total £124,000.00 → £120,280.00, total difference −£3,720.00; the platform fee becomes company-paid £3,608.40 (£120,280.00 × 3%) |
+| TC-ALL-36 〔M6〕 | C-ALL-11, R-REC-12, R-ALL-12.3/12.5 | Continue from TC-ALL-35: tick consent and apply; then reverse | After applying: the amounts due stored in the roster are unchanged; Amelia's effective amount due is £9,700.00, shown as "was £10,000.00 · −£300.00 fee payer change (Platform fee: investors → company)", status overpaid +£300.00, and it goes into pending refunds; a banner shows the change is in effect; allocation is out of date; the log has one summary entry and 12 per-person entries. After reversing: the payer is back to investors, effective amounts due are back to the originals, the entry is marked reversed and `fee_payer_change_reversed` is logged |
+| TC-ALL-37 〔M6〕 | C-ALL-11 voiding, R-ALL-12.5 | Continue from TC-ALL-36 after applying: ① manually change Amelia's amount due to £10,500; ② in allocation change the platform fee rate to 4%; ③ pick another fee while a change is in effect | ① only Amelia's row is voided, showing "This fee payer change no longer applies — redo it", logged `adjustment_voided`; ② the whole change is voided, everyone back to the original amount due, logged `fee_payer_change_voided`; ③ the panel shows only the change in effect and "Reverse" |
+| TC-ALL-38 〔M6〕 | R-ALL-12.1, C-ALL-10 | ① allocation investors were imported directly; ② allocation is out of date; ③ after carrying, the allocation investor table was edited by hand; ④ pick a fixed fee; ⑤ deducted from payment, investors already pay 60%, change a 40% company-paid fee to investors | ①–③ the panel is disabled and says why; ④ fixed fees are not in the list to pick from; ⑤ input error (investor percentages total 100%) |
+| TC-ALL-39 〔M6〕 | R-ALL-12.2/12.3 | Change to investors pay, company pays, lead pays in turn | The first two show the matching consent prompt and cannot apply without ticking "Consent evidence received"; lead pays shows "Inform only — no consent needed" and applies directly; the confirm button gives the number of people and amounts to top up and to refund |
+| TC-X-13 〔M5〕 | C-X-1 | After review, replace the whole bank statement with `fixtures/bank.csv` (clearing 5 manual decisions); then confirm 1 bank line by hand and delete it by hand | The replacement produces only 1 `decision_voided` entry whose detail says 5; the manual delete produces 1, reason: the bank line was deleted |
+| TC-X-14 〔M5〕 | R-X-05 | Render the reconciliation page | The new terms MT103 / UETR each have a sentence of explanation (the 11 of TC-X-01 as before) |
+| TC-X-15 〔M6〕 | R-X-05 | Render the withdrawal and fee payer change panels | The new terms withdrawal and fee payer each have a sentence of explanation |
+| TC-X-16 〔M5〕 | Field table initials, R-X-08.3 | Enter initials `H@Y` and make a decision; change back to `HY` and make another | With `H@Y` the field shows an error and that entry's initials are blank; after the change the entry has `HY`; changing the initials itself produces no entry |
+| TC-REC-53 〔M6〕 | C-REC-7 × C-ALL-11 | After review: first mark Lucas withdrawn, then apply the platform fee change to company pays (minimum £970, covering 11 people); then undo Lucas's withdrawal; another time: add an investor after applying | Lucas (and the added person) are marked "Not covered by the active fee payer change — reverse and redo"; reconciliation is "needs review" and carrying into allocation is disabled; after reversing the change the marks go away |
+| TC-REC-54 〔M6〕 | C-REC-7, C-ALL-11 | With the change in effect and Lucas withdrawn, change Amelia's reference `NW-001` to `NW 001` and Lucas's `NW-012` to `NW 012` | Neither counts as a change: Amelia's effective amount due is still £9,700.00, with no voiding notice or entry; Lucas is still withdrawn |
+| TC-ALL-40 〔M6〕 | C-ALL-10 step 3 | On top, minimum £1,000, A due £1,000, B due £2,000, 3% investors pay → company pays | In step 1 A does not take part (M = ⌊1,000 ÷ 1.03⌋ = £970.87 < £1,000), B does; in step 3 A would take part (M = £1,000.00): block "would join the allocation", naming A |
+| TC-ALL-41 〔M6〕 | C-ALL-10 step 1 | After review, change the cap to £80,000, then open the fee payer change panel | Block "The round is over the cap — resolve the scale-back first", plus blocks for those below the minimum after scale-back (e.g. Isla Campbell); no differences shown, cannot apply |
+| TC-ALL-42 〔M6〕 | C-ALL-11 reminder | Continue from TC-ALL-36 after applying: change the minimum from £970 back to £1,000 | The change is not voided; "Allocation settings changed since this fee payer change — check the preview" shows; the recomputed step 3 shows a block for Isla Campbell |
+| TC-ALL-43 〔M6〕 | C-ALL-10 step 2 | Randomly generated inputs across both conventions, 1–5 investor percentage fees, with and without a per-investor fixed fee (fixed seed, 3,000 sets) | In every set N_i gives I(N_i) = T_i, and at N_i − 1 penny I < T_i |
+| TC-X-17 〔M5〕 | C-X-1 import | ① After review, replace the whole statement with the sample's own bank file; ② then append the same file (all duplicate rows with the same transaction IDs); ③ replace the commitments roster so that a previously unmatched line becomes an exact match | ① the `import` auto-match count is 9; ② 0 rows added, 0 auto-matched; ③ auto-match count 1 |
+| TC-X-18 〔M5〕 | §5.5 activity log CSV | Make a decision in a GBP deal, change the deal to USD and make another, export | First row `currency` is `GBP`, second `USD`; events without an amount also carry the currency at that time |
+| TC-X-19 〔M5〕 | Saving in the browser | A schema 2 save without `withdrawals` or `feePayerChanges`; another without only `log` | The first two are not read at all (no silently computing money with no withdrawals and adjustments); with only `log` missing the deal data loads as normal |
+| TC-ALL-44 〔M6〕 | C-ALL-10/11 coverage | Deducted from payment, minimum £970; A due £1,000, B £500, 3% investors pay → company pays | Preview passes: A's N £970.00, B marked "Not participating — unchanged"; after applying B is within coverage, **not** marked "Not covered…", and carrying is not blocked |
+| TC-ALL-45 〔M6〕 | R-ALL-12.5 | Continue from TC-ALL-36: reverse straight after applying (allocation out of date); another time reverse while reconciliation is "needs review" | Both can be reversed, without ticking consent again |
+| TC-ALL-46 〔M6〕 | C-ALL-11 saved settings | Continue from TC-ALL-36 after applying: add a per-investor fixed fee of £10 paid by investors, save and refresh the page | The "Allocation settings changed…" reminder shows; recomputing with the saved T_i: each of the 12 people invests £10.00 less than T_i (e.g. Isla from £970.00 to £960.00), all listed as blocks by name |
+| TC-ALL-47 〔M6〕 | C-ALL-10/11 coverage voiding | Continue from TC-ALL-44 after applying: change B's reference to another one and the amount due from £500 to £1,000 (ID unchanged); refresh the page | B's row is voided, marked "Not covered by the active fee payer change — reverse and redo", carrying disabled; still so after refresh |
+| TC-ALL-48 〔M6〕 | C-ALL-11 voiding is permanent | Continue from TC-ALL-36 after applying: submit Amelia's amount due as £10,500, then submit £10,000 again; another time submit £10,000 directly (same as the original) | First: voided on submitting £10,500, still voided after changing back to £10,000, effective amount due is the roster value £10,000.00, marked "Not covered…"; second: not a change, effective amount due still £9,700.00 |
+| TC-ALL-49 〔M6〕 | C-ALL-10 step 3, R-ALL-08 | Minimum 0, no cap, one investor due £1,000, 3% investors pay, the company pays a whole fixed fee of £960; change the 3% to company pays | N = I = T = £970.00, but company-paid fees £960.00 + £29.10 = £989.10 > total invested £970.00 (paid to the company −£19.10): blocked, cannot apply |
+| TC-IO-47 〔M6〕 | §5.5 v0.8 exports, R-ALL-10 | After review: first mark Lucas withdrawn, then change the minimum to £970 and the platform fee to company pays and apply (the change covers 11 people); export the reconciliation ledger and the chase list; after carrying, copy the confirmation | In the ledger t13's `withdrawn_on` is `2026-10-16`, blank on other rows; in the chase list CSV David's row has `committed` `2425.00`, `committed_original` `2500.00`, `committed_adjustment` `-75.00`, and the columns are blank where there is no adjustment; both files still end with `currency`; the confirmation has a new section "Withdrawn before closing (refund in full):" with "- Lucas Meyer: £3,000.00" |
+
+Independent recalculation (oracle) adds in 〔M6〕: C-ALL-10's T, N and differences (randomly generated inputs across both conventions, several fees, with cap and minimum, compared with the TS person by person), and the pending refunds total after withdrawals. Implemented by an independent agent from the PRD wording.
+
 ## 3. Sample deal (v0.2 conventions, for freezing)
 
 A fictional "Northwind Robotics seed round SPV". Settings: GBP; cut-off date 2026-10-16; SPV nominee; fees deducted from payment; minimum £1,000; cap £150,000; share price £2.4137; investor-paid platform fee 3%; company-paid legal and admin fee £1,500 (fixed).
@@ -265,6 +325,8 @@ Every other row (units, each person's exit proceeds) is generated in M1 by both 
 - E2E-05 〔M3〕 Guided tour: walk from the first step to the last; every step's highlight target exists.
 - E2E-06 The disclaimer is shown on first open; the footer has the disclaimer and the feedback email link.
 - E2E-07 〔M3〕 Complete the manual checklist steps M-01 to M-07 at 375px width (P1).
+- E2E-08 〔M5〕 After review of the sample, copy one chase message; undo the t03 confirmation, then copy Chloe's query message and open the activity log to see the matching entries; throughout, only GETs for static assets (copying makes no request).
+- E2E-09 〔M6〕 Starting from the sample after review: mark Lucas Meyer withdrawn → carry into allocation and he is not there; change the minimum to £970, change the platform fee to company pays and apply → reconciliation shows the adjustments and overpayments; reverse and everything is restored.
 
 ## 5. Manual acceptance checklist
 PRs check only the items relevant to that PR; before release, check all of them. Before each item, click "Reset sample" to restore the sample deal to its initial state, unless the item says it continues from the previous one.
@@ -279,15 +341,18 @@ PRs check only the items relevant to that PR; before release, check all of them.
 - [ ] M-09 All text readable in dark mode; the theme switch System / Light / Dark works in all three positions (P1)
 - [ ] M-10 Complete M-01 to M-03 on a phone (P1)
 - [ ] M-11 Walk through from scratch with a 5-person roster you make up yourself; note where you get stuck
+- [ ] M-12 〔v0.8〕 (Continue from M-02) Copy one chase message; undo one confirmation, then copy a query message and read it pasted into an email draft; the activity log shows each step just taken, and the exported CSV opens
+- [ ] M-13 〔v0.8〕 (Continue from M-02) Mark one investor withdrawn, change the fee payer once, then reverse; the numbers and explanations at each step are understandable
 
 ## 6. Export formats
-- Reconciliation ledger: `transaction_id, date, amount, payer, reference, status, investor_id, investor_name, decided_by(auto|person)`
-- Chase list: `investor_id, name, email, committed, received, difference, status`
+- Reconciliation ledger: `transaction_id, date, amount, payer, reference, status, investor_id, investor_name, decided_by(auto|person)`; v0.8 adds `withdrawn_on`
+- Chase list: `investor_id, name, email, committed, received, difference, status`; from v0.8 `committed` is the effective amount due, and `committed_original, committed_adjustment, message` are added
+- Activity log (v0.8): `seq, time, initials, event, investor_id, investor_name, transaction_id, amount, detail, currency`
 - Closing allocation: `investor_id, name, scheme, received, invested, units, fee_<each fee name>, fees_total, refund, seis_eis_claimable_shares, seis_eis_claimable_amount, status`
 - Exit distribution: `investor_id, name, capital, shares_display, distribution, profit, multiple_excl_entry_fees` (for reading only, not for re-import)
 - **Export holdings** (re-importable): `investor_id, name, capital, shares_display, share_price`. On re-import only `capital` and `share_price` are used.
 - Amounts are decimals without a currency symbol (e.g. `1234.56`); negative values keep a leading minus sign; file names include the currency (e.g. `allocation_GBP.csv`).
-- Every export ends with a `currency` column holding the deal currency's ISO code (e.g. `GBP`) on each row; the column name is fixed and does not change with the currency (v0.7.5, decision 10).
+- Every export ends with a `currency` column holding the deal currency's ISO code (e.g. `GBP`) on each row; the column name is fixed and does not change with the currency (v0.7.5, decision 10). Exception (v0.8): the activity log writes on each row the currency **at the time of that event**.
 
 ## 7. Requirements traceability matrix
 
@@ -316,6 +381,9 @@ Note: this lists "which cases verify this requirement". An ID being present does
 | R-REC-07 | TC-REC-19 |
 | R-REC-08 | TC-REC-21, 23, 29 |
 | R-REC-09 | TC-REC-22, 27, TC-IO-11 |
+| R-REC-10 | TC-REC-42, 43, 44, 45, 46, E2E-08, M-12 |
+| R-REC-11 | TC-REC-47, 48, 49, 50, 51, 52, 53, 54, E2E-09, M-13 |
+| R-REC-12 | TC-ALL-36, 37, E2E-09 |
 | R-ALL-01 | TC-ALL-19, TC-IO-16 |
 | R-ALL-02 | TC-ALL-11, 15, 19, 21 |
 | R-ALL-03 | TC-ALL-07, 08, 21 |
@@ -328,6 +396,7 @@ Note: this lists "which cases verify this requirement". An ID being present does
 | R-ALL-09 | TC-ALL-18, 23 |
 | R-ALL-10 | TC-ALL-20, 24, 30 |
 | R-ALL-11 | E2E-01b, E2E-02b |
+| R-ALL-12 | TC-ALL-31 to 49, TC-IO-47, E2E-09, M-13 |
 | R-DIS-01 | TC-DIS-21, 22, 23, 24, 26, TC-IO-17, E2E-01b |
 | R-DIS-02 | TC-DIS-03, 08 |
 | R-DIS-03 | TC-DIS-01, 04 ~ 08, 16, 20 |
@@ -339,6 +408,8 @@ Note: this lists "which cases verify this requirement". An ID being present does
 | R-X-02 | E2E-03, 04, TC-X-04 |
 | R-X-03 | E2E-06, M-08 |
 | R-X-04 | TC-X-03, E2E-07, M-09, M-10 (P1) |
-| R-X-05 | TC-X-01, M-08 |
+| R-X-05 | TC-X-01, TC-X-14, TC-X-15, M-08 |
 | R-X-06 | TC-X-02, E2E-06 |
 | R-X-07 | E2E-02a, E2E-02b |
+| R-X-08 | TC-X-05, 06, 07, 08, 09, 10, 13, 16, 17, 18, 19, E2E-08, M-12 |
+| R-X-01.2 | TC-X-11, TC-X-12, TC-X-20, E2E-05 |

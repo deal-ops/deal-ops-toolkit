@@ -1,4 +1,4 @@
-// Guided tour script (PRD R-X-01, docs/en/05_GUIDED_TOUR.md v0.2, approved 2026-10-20).
+// Guided tour script (PRD R-X-01, docs/en/05_GUIDED_TOUR.md v0.3; v0.2 approved 2026-10-20, v0.3 with PRD v0.8).
 // Pure: every step reads figures from the engines' results and acts only through the reducer, so the tour can
 // never book, move or show money differently from the rest of the interface.
 import { decide, handoffToAllocation, reconcile, type ReconcileResult } from '../lib/reconcile'
@@ -7,8 +7,10 @@ import { carryIsFullShare, distribute, type WaterfallInput, type WaterfallResult
 import { holdingsFromAllocation } from '../lib/snapshot'
 import { blocked } from '../lib/outcome'
 import { formatMicroShares, formatMoney, formatPercent, parseMoney, plainMoney } from '../lib/money'
-import { SAMPLE_CAP } from '../lib/sample'
-import { deriveAllocation, deriveDistribution, deriveReconcile } from '../derive'
+import { SAMPLE_CAP, SAMPLE_FEES } from '../lib/sample'
+import { previewFeePayerChange } from '../lib/feePayer'
+import { deriveAllocation, deriveDistribution, deriveFeePayerInput, deriveReconcile } from '../derive'
+import { activeChange } from '../lib/adjust'
 import { allocationStale, exitStale, initialState, reducer, sampleState, type AppState } from '../state'
 
 /** Shown in place of a figure the engines could not provide (a test asserts it never appears on the sample). */
@@ -84,19 +86,20 @@ function decideOn(s: AppState, txn: string, investorId: string | null): AppState
   const line = lineOf(c, txn)?.line
   const who = investorId ? (recRow(c, investorId)?.commitment ?? null) : null
   if (!line || (investorId && !who)) return s
-  return reducer(s, { type: 'decide', lineId: line.id, decision: decide(line, who) })
+  // logged like the person's own decision, marked as the tour's (C-X-1)
+  return reducer(s, { type: 'decide', lineId: line.id, decision: decide(line, who), via: 'candidate', prevStatus: lineOf(c, txn)?.status, tour: true })
 }
 
 function undoOn(s: AppState, txn: string): AppState {
-  const line = lineOf(context(s), txn)?.line
-  return line ? reducer(s, { type: 'undoDecision', lineId: line.id }) : s
+  const l = lineOf(context(s), txn)
+  return l ? reducer(s, { type: 'undoDecision', lineId: l.line.id, prevStatus: l.status, tour: true }) : s
 }
 
 function handOffToAllocation(s: AppState): AppState {
   const c = context(s)
   if (!c.rec) return s
   const h = handoffToAllocation(c.rec)
-  return h.ok ? reducer(s, { type: 'handoff', handoff: h.value }) : s
+  return h.ok ? reducer(s, { type: 'handoff', handoff: h.value, tour: true }) : s
 }
 
 function handOffToExit(s: AppState): AppState {
@@ -104,7 +107,7 @@ function handOffToExit(s: AppState): AppState {
   const o = d.input ? allocate(d.input) : null
   if (!d.input || !o?.ok || blocked(o.checks)) return s
   const snap = holdingsFromAllocation(o.result, d.input.priceMicros, s.allocVersion)
-  return reducer(s, { type: 'handoffToExit', holdings: snap.data.rows, sharePriceMicros: snap.data.sharePriceMicros! })
+  return reducer(s, { type: 'handoffToExit', holdings: snap.data.rows, sharePriceMicros: snap.data.sharePriceMicros!, tour: true })
 }
 
 /** Confirm one suggested line for the expected investor (steps 2–4). */
@@ -203,8 +206,14 @@ export const STEPS: Step[] = [
     id: 'short-and-over',
     chapter: 'Reconciliation',
     tab: 'rec',
-    targets: () => ['status-c04', 'status-c08', 'chase-export'],
-    text: (c) => `${paymentStory(c, 'c04', 'David')} ${paymentStory(c, 'c08', 'Hugo')}`,
+    // v0.3: David's "Copy message" is last, so the first target still decides the scroll position
+    targets: () => ['status-c04', 'status-c08', 'chase-export', 'copy-message-c04'],
+    text: (c) => {
+      // only while someone is on the chase list, so the card never points at a button that is not there (guide v0.3 §3.1)
+      const chase = c.rec?.commitments.some((x) => x.status === 'partial' || x.status === 'outstanding')
+      const copy = chase ? " 'Copy message' next to each name gives you the chase email to send yourself." : ''
+      return `${paymentStory(c, 'c04', 'David')} ${paymentStory(c, 'c08', 'Hugo')}${copy}`
+    },
   },
   {
     id: 'hand-off',
@@ -331,9 +340,12 @@ function paymentStory(c: Ctx, id: string, first: string): string {
 
 export const firstStepOf = (ch: Chapter) => STEPS.findIndex((s) => s.chapter === ch)
 
-/** Deterministic replay: the sample plus the actions of every step before `n` (resume, chapter jumps, E2E-05). */
+/**
+ * Deterministic replay: the sample plus the actions of every step before `n` (resume, chapter jumps, E2E-05). It loads
+ * the sample through the reducer, so the log starts again at sample_loaded and the replayed decisions are not doubled (C-X-1).
+ */
 export function stateAt(n: number, base: AppState): AppState {
-  let s: AppState = { ...sampleState(base), disclaimerAccepted: true }
+  let s: AppState = { ...reducer(base, { type: 'loadSample' }), disclaimerAccepted: true }
   for (const step of STEPS.slice(0, n)) if (step.action && !step.action.done(context(s))) s = step.action.perform(s)
   return s
 }
@@ -350,8 +362,9 @@ export function prerequisitesMet(n: number, s: AppState): boolean {
 /** The data a person can change, in a form that does not depend on the order decisions were made in. */
 function tourData(x: AppState): string {
   const decisions = Object.entries(x.decisions).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  // the log and the initials are not deal data: counting them, the page would never look unchanged (Tech Design §9.3)
   return JSON.stringify([
-    x.deal,
+    { ...x.deal, initials: '' },
     x.commitments,
     x.bank,
     decisions,
@@ -361,6 +374,8 @@ function tourData(x: AppState): string {
     x.allocation.investors,
     x.allocation.excess,
     { ...x.exit, handoffVersion: null },
+    Object.entries(x.withdrawals).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+    x.feePayerChanges,
   ])
 }
 
@@ -383,4 +398,63 @@ export function nothingToLose(s: AppState): boolean {
   // a fresh page (its as-of date is just "today"), or the untouched sample
   // the as-of date counts too: an edited date is data, and an old untouched page errs on the side of asking (Codex M3 R3 #11)
   return tourData(s) === tourData(initialState()) || tourData(s) === tourData(sampleState(s))
+}
+
+// ---------- end card "Try next" (guide v0.3 §3.2) ----------
+
+export interface TryNext {
+  text: string
+  tab: TourTab
+  /** data-tour anchor that "Take me to it" brings into view and focuses; it never acts (§1: the person decides) */
+  target: string
+}
+
+/** The sample's investor for item 1 and its platform fee for item 2 (guide v0.3 §3.2). */
+const LUCAS = 'c12'
+const PLATFORM_FEE = SAMPLE_FEES[0].id
+
+/**
+ * Item 2: preview the platform fee moving to the company. If it is blocked only by one investor falling below the
+ * minimum, preview again with the minimum lowered to that investor's new cash due, and offer that only if it passes.
+ */
+function feePayerItem(c: Ctx): TryNext | null {
+  const s = c.state
+  const fee = s.allocation.fees.find((f) => f.id === PLATFORM_FEE)
+  if (!fee || fee.payer !== 'investors' || fee.kind !== 'percent' || !c.allocInput) return null
+  // the panel must be usable — except that an out-of-date allocation still counts: after item 1 the item stays and the
+  // panel says to hand off again (guide v0.3 §8 item 2)
+  if (activeChange(s.feePayerChanges) || s.allocation.handoffVersion === null || s.allocation.editedSinceHandoff) return null
+  const d = deriveFeePayerInput(s, fee.id, 'company')
+  const o = d.input ? previewFeePayerChange(d.input) : null
+  if (!d.input || !o?.ok) return null
+  const tail = "then apply and see each investor's new amount due."
+  if (o.result.canApply) return { text: `Change who pays the platform fee to the company, ${tail}`, tab: 'alloc', target: 'fee-payer' }
+  const b = o.result.blockers
+  if (b.length !== 1 || b[0].code !== 'would-fall-below-minimum') return null
+  const who = o.result.rows.find((r) => r.id === b[0].investorId)
+  if (!who) return null
+  const lowered = previewFeePayerChange({ ...d.input, minimum: who.newDue })
+  if (!lowered.ok || !lowered.result.canApply) return null
+  return {
+    text: `Change who pays the platform fee to the company. ${who.name.split(' ')[0]}'s ${money(c, c.allocInput.minimum)} minimum blocks it: lower the minimum commitment (Deal settings) to ${money(c, who.newDue)}, ${tail}`,
+    tab: 'alloc',
+    target: 'fee-payer',
+  }
+}
+
+/** Items whose premise does not hold on the current data are left out, never shown as unavailable. */
+export function tryNext(c: Ctx): TryNext[] {
+  const items: TryNext[] = []
+  const lucas = recRow(c, LUCAS)
+  if (lucas && lucas.withdrawnOn === null && lucas.received > 0)
+    items.push({
+      text: `Mark ${lucas.commitment.name} withdrawn. You'll need his written consent. His ${money(c, lucas.received)} moves to refunds.`,
+      tab: 'rec',
+      target: `withdraw-${LUCAS}`,
+    })
+  const fp = feePayerItem(c)
+  if (fp) items.push(fp)
+  const confirmed = c.rec?.lines.find((l) => l.status === 'confirmed')
+  if (confirmed) items.push({ text: "Undo a confirmed payment to see 'Copy query'.", tab: 'rec', target: `undo-${confirmed.line.txnId ?? confirmed.line.id}` })
+  return items
 }

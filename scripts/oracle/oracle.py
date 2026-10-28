@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Independent reference implementation ("oracle") of the Deal Ops Toolkit engines.
 
-Written from the PRD §5.0-5.4 (Chinese source of truth; English snapshot in docs/en/01_PRD.md) and scripts/oracle/SCHEMA.md only.
+Written from the PRD §5.0-5.4 (v0.8: C-REC-7, C-ALL-10, C-ALL-11; Chinese source of truth, English snapshot in
+docs/en/01_PRD.md), the test plan and scripts/oracle/SCHEMA.md only.
 Usage: python3 scripts/oracle/oracle.py <case.json>
 
 All money is integer minor units, rates are basis points, prices are micros,
@@ -244,6 +245,191 @@ def allocation(case):
         "wire": wire,
         "blockers": sorted(blockers),
     }
+
+
+# ---------------------------------------------------------------- fee payer change (C-ALL-10, v0.8)
+
+class ArithmeticFail(Exception):
+    """C-03 'arithmetic check failed' (internal error): never caught by run()."""
+
+
+def _alloc_case(case, fees, investors, minimum=None, cap="same"):
+    return {
+        "kind": "allocation", "feeBasis": case.get("feeBasis"),
+        "minimum": case.get("minimum", 0) if minimum is None else minimum,
+        "cap": case.get("cap") if cap == "same" else cap,
+        "priceMicros": case.get("priceMicros"), "fees": fees,
+        "investors": investors,
+    }
+
+
+def single_invested(case, fees, R):
+    """I(R): C-ALL-1, C-ALL-4, C-ALL-6, C-ALL-7 for one investor under `fees`,
+    ignoring cap and minimum (minimum 0, no cap). Reuses allocation()."""
+    out = allocation(_alloc_case(case, fees, [{"id": "x", "received": R, "scheme": "none"}], minimum=0, cap=None))
+    return out["investors"]["x"]["invested"]
+
+
+def ceil_frac(x):
+    return -((-Fraction(x)).__floor__())
+
+
+def new_cash_due(case, fees2, T):
+    """Smallest whole-penny R with I(R) >= T under fees2 (C-ALL-10 step 2).
+
+    Own derivation: I(R) <= M(R) (C-ALL-7 only lowers I) and M(R) is non-decreasing in R.
+    deducted: M(R) = floor((R - F')(1 - p')) >= T  <=>  R >= F' + T/(1 - p')  <=>  R >= F' + ceil(T/(1 - p')).
+    onTop:    M(R) = floor((R - F')/(1 + p')) >= T  <=>  R >= F' + T(1 + p')  <=>  R >= F' + ceil(T(1 + p')).
+    So no R below R0 can give I(R) >= T; scan upward from R0 (each R checked with the full
+    single-investor allocation), which therefore yields the minimum."""
+    inv_pct = sum(f["value"] for f in fees2 if f["payer"] == "investors" and f["kind"] == "percent")
+    inv_fix = sum(f["value"] for f in fees2 if f["payer"] == "investors" and f["kind"] == "perInvestor")
+    if case.get("feeBasis") == "deducted":
+        R = inv_fix + ceil_frac(Fraction(T * BP, BP - inv_pct))
+    else:
+        R = inv_fix + ceil_frac(Fraction(T * (BP + inv_pct), BP))
+    for _ in range(100000):
+        if R > MONEY_MAX:
+            raise Invalid("new cash due above I-01 limit")
+        I = single_invested(case, fees2, R)
+        if I >= T:
+            if I != T:  # PRD C-ALL-10: always exact; otherwise C-03 arithmetic failure
+                raise ArithmeticFail("I(N) = %d != T = %d" % (I, T))
+            return R
+        R += 1
+    raise ArithmeticFail("no N found within 100000 pence of the lower bound")
+
+
+def fee_payer_change(case):
+    fees = case.get("fees") or []
+    fee_id = case.get("feeId")
+    new_payer = case.get("newPayer")
+    sel = [f for f in fees if f.get("id") == fee_id]
+    if len(sel) != 1 or sel[0].get("kind") != "percent":
+        raise Invalid("selected fee must be one percent fee")
+    if new_payer not in ("investors", "company", "lead"):
+        raise Invalid("new payer")
+    applied = case.get("applied")
+    if applied is None and sel[0].get("payer") == new_payer:
+        raise Invalid("new payer equals current payer")
+    fees2 = [dict(f, payer=new_payer) if f.get("id") == fee_id else f for f in fees]
+
+    investors = case.get("investors") or []
+    ids = []
+    for inv in investors:
+        iid = inv.get("id")
+        if not isinstance(iid, str) or iid in ids:
+            raise Invalid("investor id")
+        ids.append(iid)
+        need_int(inv.get("cashDue"), 1, MONEY_MAX)
+    due = {inv["id"]: inv["cashDue"] for inv in investors}
+    scheme = {inv["id"]: inv.get("scheme", "none") for inv in investors}
+
+    # input validation of Fees and Fees' (R-ALL-01/02); raises Invalid -> ok:false
+    allocation(_alloc_case(case, fees, []))
+    allocation(_alloc_case(case, fees2, []))
+
+    blockers = set()
+    fee_before = None
+    if applied is None:
+        # step 1: commitment allocation under Fees with R = cash due
+        a1 = allocation(_alloc_case(case, fees, [{"id": i, "received": due[i], "scheme": scheme[i]} for i in ids]))
+        part1 = {i: a1["investors"][i]["participating"] for i in ids}
+        fee_before = a1["feeTotals"][fee_id]
+        for b in a1["blockers"]:
+            blockers.add(("before-" + b, ""))
+        # C-ALL-3: the round is scaled back iff the participants' M (C-ALL-1/2) sum exceeds the cap
+        m_sum = sum(_m_of(case, fees, due[i]) for i in ids if _m_of_participates(case, fees, due[i]))
+        if case.get("cap") is not None and m_sum > case["cap"]:
+            blockers.add(("over-cap", ""))
+        target = {i: a1["investors"][i]["invested"] for i in ids if part1[i]}
+    else:
+        tg = applied.get("targets") or {}
+        nd = applied.get("newCashDue") or {}
+        if set(tg) != set(nd) or not set(tg) <= set(ids):
+            raise Invalid("applied targets / newCashDue")
+        for i in tg:
+            need_int(tg[i], 1, MONEY_MAX)
+            need_int(nd[i], 1, MONEY_MAX)
+        part1 = {i: i in tg for i in ids}
+        target = dict(tg)
+
+    out_inv = {}
+    step1_ok = not blockers
+    if not step1_ok:
+        for i in ids:
+            out_inv[i] = {"cashDue": due[i], "participatingBefore": part1[i], "unchanged": None, "target": None,
+                          "newCashDue": None, "difference": None, "participatingAfter": None, "investedAfter": None}
+        return _fpc_out(blockers, out_inv, ids, due, fee_before, None, False)
+
+    # step 2
+    N = {}
+    for i in ids:
+        if part1[i]:
+            N[i] = new_cash_due(case, fees2, target[i]) if applied is None else applied["newCashDue"][i]
+        else:
+            N[i] = due[i]
+    # step 3
+    a3 = allocation(_alloc_case(case, fees2, [{"id": i, "received": N[i], "scheme": scheme[i]} for i in ids]))
+    for b in a3["blockers"]:
+        blockers.add(("after-" + b, ""))
+    F2 = sum(f["value"] for f in fees2 if f["payer"] == "investors" and f["kind"] == "perInvestor")
+    minimum = case.get("minimum", 0) or 0
+    for i in ids:
+        v = a3["investors"][i]
+        if part1[i] and not v["participating"]:
+            if N[i] > F2:
+                M = _m_of(case, fees2, N[i])
+                basis_amt = N[i] if case["feeBasis"] == "deducted" else M
+                below = M > 0 and basis_amt < minimum
+            else:
+                below = False
+            blockers.add(("would-fall-below-minimum" if below else "would-leave", i))
+        elif not part1[i] and v["participating"]:
+            blockers.add(("would-join", i))
+        elif part1[i] and v["invested"] != target[i]:
+            blockers.add(("invested-differs", i))
+        out_inv[i] = {
+            "cashDue": due[i], "participatingBefore": part1[i], "unchanged": not part1[i],
+            "target": target[i] if part1[i] else None, "newCashDue": N[i], "difference": N[i] - due[i],
+            "participatingAfter": v["participating"], "investedAfter": v["invested"],
+        }
+    return _fpc_out(blockers, out_inv, ids, due, fee_before, a3["feeTotals"][fee_id], True)
+
+
+def _m_of(case, fees, R):
+    """M of C-ALL-1 (before rounding adjustments of C-ALL-7); 0 when R <= F."""
+    p = sum(f["value"] for f in fees if f["payer"] == "investors" and f["kind"] == "percent")
+    F = sum(f["value"] for f in fees if f["payer"] == "investors" and f["kind"] == "perInvestor")
+    if R <= F:
+        return 0
+    if case["feeBasis"] == "deducted":
+        return floor_frac(Fraction((R - F) * (BP - p), BP))
+    return floor_frac(Fraction((R - F) * BP, BP + p))
+
+
+def _m_of_participates(case, fees, R):
+    """C-ALL-1/C-ALL-2 participation (the set whose M is summed in C-ALL-3)."""
+    M = _m_of(case, fees, R)
+    if M <= 0:
+        return False
+    amt = R if case["feeBasis"] == "deducted" else M
+    return amt >= (case.get("minimum", 0) or 0)
+
+
+def _fpc_out(blockers, out_inv, ids, due, fee_before, fee_after, computed):
+    bl = [{"code": c, "investor": (i or None)} for c, i in sorted(blockers)]
+    tot = {"cashDue": sum(due[i] for i in ids), "newCashDue": None, "difference": None,
+           "topUpCount": None, "topUpTotal": None, "refundCount": None, "refundTotal": None}
+    if computed:
+        diffs = [out_inv[i]["difference"] for i in ids]
+        tot.update({
+            "newCashDue": sum(out_inv[i]["newCashDue"] for i in ids), "difference": sum(diffs),
+            "topUpCount": sum(1 for d in diffs if d > 0), "topUpTotal": sum(d for d in diffs if d > 0),
+            "refundCount": sum(1 for d in diffs if d < 0), "refundTotal": -sum(d for d in diffs if d < 0),
+        })
+    return {"ok": True, "canApply": not bl, "blockers": bl, "investors": out_inv,
+            "feeBefore": fee_before, "feeAfter": fee_after, "totals": tot}
 
 
 # ---------------------------------------------------------------- waterfall
@@ -520,6 +706,22 @@ def reconcile(case):
         raise Invalid("normalised reference length 3-20 and unique")
     cdigits = [digits_int(c.get("reference")) for c in commitments]
 
+    # v0.8 (C-REC-7, C-ALL-11): optional withdrawn ids and effective cash due
+    extended = "withdrawn" in case or "adjustedCashDue" in case
+    cids = [c.get("id") for c in commitments]
+    withdrawn = case.get("withdrawn") or []
+    adjusted = case.get("adjustedCashDue") or {}
+    if not isinstance(withdrawn, list) or len(set(withdrawn)) != len(withdrawn) or not set(withdrawn) <= set(cids):
+        raise Invalid("withdrawn ids")
+    if not isinstance(adjusted, dict) or not set(adjusted) <= set(cids):
+        raise Invalid("adjustedCashDue ids")
+    for v in adjusted.values():
+        need_int(v, 1, MONEY_MAX)
+    withdrawn = set(withdrawn)
+
+    def eff_due(c):
+        return adjusted.get(c["id"], c["cashDue"])
+
     # suspected duplicates: no txnId, identical (date, amount, payer, reference)
     keyc = {}
     for ln in lines:
@@ -589,7 +791,7 @@ def reconcile(case):
                 if partial:
                     s += Fraction(1, 4)
             s += name_similarity(ln.get("payer"), c.get("name")) * Fraction(3, 10)
-            due = c["cashDue"]
+            due = eff_due(c)
             owe = due - booked.get(c["id"], 0)
             if ln["amount"] == due or (owe > 0 and ln["amount"] == owe):
                 s += Fraction(1, 4)
@@ -620,8 +822,10 @@ def reconcile(case):
     out_c = {}
     for c in commitments:
         r = booked.get(c["id"], 0)
-        diff = r - c["cashDue"]
-        if r == 0:
+        diff = r - eff_due(c)
+        if c["id"] in withdrawn:
+            st = "withdrawn"
+        elif r == 0:
             st = "outstanding"
         elif diff == 0:
             st = "paid"
@@ -630,18 +834,50 @@ def reconcile(case):
         else:
             st = "partial"
         out_c[c["id"]] = {"received": r, "difference": diff, "status": st}
+        if extended:
+            out_c[c["id"]].update({"cashDue": eff_due(c), "withdrawn": c["id"] in withdrawn})
 
     out_l = {}
     for ln in lines:
         rec = info[ln["id"]]
         out_l[ln["id"]] = {k: rec[k] for k in ("status", "assignedTo", "suspectedDuplicate", "candidates")}
 
-    return {
+    result = {
         "lines": out_l,
         "commitments": out_c,
         "totals": {"bank": bank, "booked": booked_total, "unbooked": bank - booked_total},
         "aged": sorted(aged),
     }
+    if extended:
+        refunds, chase, handoff = [], [], {}
+        for c in commitments:
+            cid, r, due = c["id"], booked.get(c["id"], 0), eff_due(c)
+            if cid in withdrawn:
+                if r > 0:  # C-REC-7: all received, reason Withdrawn; none if nothing received
+                    refunds.append({"id": cid, "amount": r, "reason": "withdrawn"})
+                continue
+            if r > due:  # C-REC-6
+                refunds.append({"id": cid, "amount": r - due, "reason": "overpayment"})
+            if r < due:  # R-REC-09 / R-REC-10.1: unpaid or part-paid, not withdrawn
+                chase.append({"id": cid, "outstanding": due - r})
+            handoff[cid] = min(r, due)
+        refund_total = sum(x["amount"] for x in refunds)
+        # C-REC-7 identity, computed independently of the refund list
+        identity = (sum(booked.get(c["id"], 0) for c in commitments if c["id"] in withdrawn)
+                    + sum(max(0, booked.get(c["id"], 0) - eff_due(c)) for c in commitments if c["id"] not in withdrawn))
+        if identity != refund_total:
+            raise ArithmeticFail("refund total identity")
+        w_refund = sum(x["amount"] for x in refunds if x["reason"] == "withdrawn")
+        result.update({
+            "refunds": refunds,
+            "refundTotal": refund_total,
+            "receivable": sum(eff_due(c) for c in commitments if c["id"] not in withdrawn),
+            "withdrawnSummary": {"count": len(withdrawn), "refund": w_refund},
+            "chase": chase,
+            "handoff": handoff,
+            "checks": {"refundIdentity": identity == refund_total},
+        })
+    return result
 
 
 # ---------------------------------------------------------------- entry
@@ -655,6 +891,8 @@ def run(case):
             return waterfall(case)
         if kind == "reconcile":
             return reconcile(case)
+        if kind == "feePayerChange":
+            return fee_payer_change(case)
     except (Invalid, KeyError, TypeError, AttributeError):
         return {"ok": False}
     return {"ok": False}

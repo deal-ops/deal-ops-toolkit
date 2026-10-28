@@ -1,6 +1,6 @@
 // Guided tour script (R-X-01, docs/en/05_GUIDED_TOUR.md v0.2): replay, card figures, recovery.
 import { describe, expect, it } from 'vitest'
-import { MISSING, context, tourIntact, nothingToLose, prerequisitesMet, stateAt, STEPS, firstStepOf, DEMO_CAP_TEXT, SAMPLE_CAP_TEXT } from './script'
+import { MISSING, context, tourIntact, nothingToLose, prerequisitesMet, stateAt, STEPS, firstStepOf, DEMO_CAP_TEXT, SAMPLE_CAP_TEXT, tryNext } from './script'
 import { initialState, reducer } from '../state'
 import { carryIsFullShare, distribute } from '../lib/waterfall'
 
@@ -198,5 +198,47 @@ describe('guided tour script', () => {
     const s = reducer(stateAt(i, base), { type: 'setAllocation', patch: { cap: DEMO_CAP_TEXT } })
     expect(STEPS[i].text(context(s, '120000'), true)).toContain('Next puts the cap back to £120,000.00.')
     expect(STEPS[i].text(context(s, ''), true)).toContain('Next puts the cap back to no cap.')
+  })
+})
+
+describe('guided tour v0.3 (PRD v0.8 R-X-01.2)', () => {
+  const COPY = " 'Copy message' next to each name gives you the chase email to send yourself."
+  it('TC-X-11 still 12 steps; step 6 adds the Copy message sentence and target, step 2 is unchanged', () => {
+    expect(STEPS).toHaveLength(12)
+    const six = STEPS[5]
+    const c = context(stateAt(5, base))
+    expect(six.text(c, false)).toBe(
+      'David is £500.00 short — on the chase list you can export. Hugo paid £5,000.00 more than due — listed as a refund, not invested.' + COPY,
+    )
+    expect(six.targets(c, false)).toEqual(['status-c04', 'status-c08', 'chase-export', 'copy-message-c04'])
+    expect(STEPS[1].text(context(stateAt(1, base)), false)).not.toContain('Copy')
+    // nobody left on the chase list: the sentence goes, so it never points at a missing button
+    let paid = stateAt(5, base)
+    paid = reducer(paid, { type: 'replaceCommitments', rows: paid.commitments.filter((r) => r.id !== 'c04' && r.id !== 'c10') })
+    expect(six.text(context(paid), false)).not.toContain('Copy message')
+  })
+
+  it('TC-X-11 the end card offers item 3 (undo a confirmed payment) and focuses its Undo', () => {
+    const items = tryNext(context(stateAt(STEPS.length, base)))
+    // item 3 comes last, after the two M6 items (TC-X-12)
+    expect(items.at(-1)).toEqual({ text: "Undo a confirmed payment to see 'Copy query'.", tab: 'rec', target: 'undo-t03' })
+    // nothing confirmed by hand: the item is left out
+    expect(tryNext(context(stateAt(0, base))).map((t) => t.target)).not.toContain('undo-t03')
+  })
+
+  it("TC-X-11 the tour's own decisions are logged as the tour's; a replay starts the log again without doubles", () => {
+    const end = stateAt(STEPS.length, base)
+    const ev = end.log.entries.map((e) => e.event)
+    expect(ev).toEqual(['sample_loaded', 'confirm', 'confirm', 'confirm', 'not_in_deal', 'not_in_deal', 'handoff_allocation', 'handoff_exit'])
+    for (const e of end.log.entries.slice(1)) expect(e.detail).toMatch(/ · guided tour$/)
+    expect(end.log.entries.map((e) => e.seq)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
+    // jump back to chapter 1 from the finished tour, and replay to the end again
+    const again = stateAt(STEPS.length, stateAt(firstStepOf('Reconciliation'), end))
+    expect(again.log.entries.map((e) => e.event)).toEqual(ev)
+    // the log and the initials are not data the tour compares
+    expect(tourIntact(STEPS.length, { ...end, deal: { ...end.deal, initials: 'HY' }, log: { ...end.log, entries: [] } })).toBe(true)
+    // a fresh page with only initials typed has nothing to lose: starting the tour does not ask first
+    const today = initialState()
+    expect(nothingToLose({ ...today, deal: { ...today.deal, initials: 'HY' } })).toBe(true)
   })
 })

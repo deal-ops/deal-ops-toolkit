@@ -6,6 +6,10 @@ import { validateAllocation, type AllocationInput, type Fee, type TaxScheme } fr
 import { validateHoldings, validateWaterfall, type Holding } from './lib/waterfall'
 import type { InputError } from './lib/outcome'
 import type { CarryTerms, WaterfallInput } from './lib/waterfall'
+import { activeChange, effectiveDue, notCovered, settingsChanged, withdrawalStands, type FeePayerChange } from './lib/adjust'
+import type { FeePayer } from './lib/allocation'
+import { previewFeePayerChange, type FeePayerInput, type FeePayerPreview } from './lib/feePayer'
+import type { Outcome } from './lib/outcome'
 import type { AppState, BankRow, CommitmentRow, DealText } from './state'
 
 export interface Derived<T> {
@@ -35,7 +39,9 @@ function minimumOf(d: DealText, c: Collector): number {
   return trimAscii(d.minimum) === '' ? 0 : c.take(parseMoney(d.minimum, d.currency), 'Deal settings, minimum commitment', 0)
 }
 
-export function deriveReconcile(s: Pick<AppState, 'deal' | 'commitments' | 'bank' | 'decisions'>): Derived<ReconcileInput> {
+export function deriveReconcile(
+  s: Pick<AppState, 'deal' | 'commitments' | 'bank' | 'decisions'> & Partial<Pick<AppState, 'withdrawals' | 'feePayerChanges'>>,
+): Derived<ReconcileInput> {
   const c = new Collector()
   const cur: Currency = s.deal.currency
   const asOf = c.take(parseDate(s.deal.asOf), 'Deal settings, as-of date', '2000-01-01')
@@ -47,7 +53,21 @@ export function deriveReconcile(s: Pick<AppState, 'deal' | 'commitments' | 'bank
   }
   const commitments = s.commitments.map((r, i) => commitmentOf(r, cur, c, `Investors row ${i + 1}`).value)
   const lines = bankLines(s, c, asOf)
-  const input: ReconcileInput = { commitments, lines, decisions: s.decisions, asOf, thresholdDays }
+  // C-REC-7 / C-ALL-11: marks and the active change, passed to the engine beside the list (never written into it)
+  const saved = s.withdrawals ?? {}
+  // a mark counts only while the investor's reference is the one it was made on (Codex M6 r6 #3)
+  const withdrawals: Record<string, { on: string; consent: true; reference: string }> = Object.create(null)
+  for (const x of commitments) if (Object.hasOwn(saved, x.id) && withdrawalStands(saved[x.id], x.reference)) withdrawals[x.id] = saved[x.id]
+  const change = activeChange(s.feePayerChanges ?? [])
+  const withdrawn: Record<string, string> = Object.create(null)
+  const due: Record<string, number> = Object.create(null)
+  for (const x of commitments) {
+    if (Object.hasOwn(withdrawals, x.id)) withdrawn[x.id] = withdrawals[x.id].on
+    const e = effectiveDue(change, x.id, x.cashDue, x.reference)
+    if (e.due !== x.cashDue) due[x.id] = e.due
+  }
+  const uncovered = notCovered(change, commitments, withdrawals)
+  const input: ReconcileInput = { commitments, lines, decisions: s.decisions, asOf, thresholdDays, withdrawn, due, notCovered: uncovered }
   const errors = [...c.errors, ...validateReconcile(input).map(friendly)]
   return { input: errors.length ? null : input, errors }
 }
@@ -118,6 +138,61 @@ export function deriveAllocation(s: Pick<AppState, 'deal' | 'allocation'>): Deri
   const input: AllocationInput = { feeBasis: s.deal.feeBasis, minimum, cap, priceMicros, fees, investors }
   const errors = [...c.errors, ...validateAllocation(input).map(friendly)]
   return { input: errors.length ? null : input, errors }
+}
+
+/**
+ * C-ALL-10 scope and settings for "Change who pays a fee": the allocation as typed, and the investors on the list who are
+ * not withdrawn and are in the allocation snapshot, with the cash due as on the list.
+ */
+export type FeeChangeData = Pick<AppState, 'deal' | 'allocation' | 'commitments' | 'withdrawals' | 'feePayerChanges'>
+
+export function deriveFeePayerInput(
+  s: FeeChangeData,
+  feeId: string,
+  to: FeePayer,
+  /** the investors to take: by default those in the allocation snapshot; a re-check passes the ones its change covers */
+  scope?: (id: string) => boolean,
+): Derived<FeePayerInput> {
+  const a = deriveAllocation(s)
+  if (!a.input) return { input: null, errors: a.errors }
+  const c = new Collector()
+  const inSnapshot = new Set(s.allocation.investors.map((v) => v.id))
+  const inScope = scope ?? ((id: string) => inSnapshot.has(id))
+  const investors = s.commitments
+    .filter((r) => inScope(r.id) && !Object.hasOwn(s.withdrawals, r.id))
+    .map((r, i) => {
+      const v = commitmentOf(r, s.deal.currency, c, `Investors row ${i + 1}`).value
+      return { id: v.id, name: v.name, cashDue: v.cashDue, scheme: v.scheme, reference: v.reference }
+    })
+  if (c.errors.length) return { input: null, errors: c.errors }
+  const { feeBasis, minimum, cap, priceMicros, fees } = a.input
+  return { input: { feeBasis, minimum, cap, priceMicros, fees, feeId, to, investors }, errors: [] }
+}
+
+/**
+ * C-ALL-11: the active change, whether the allocation settings differ from those it was applied with, and if so step 3
+ * again with the saved T_i and N_i under the current settings (only for investors it still covers).
+ */
+export function deriveChangeRecheck(s: FeeChangeData): { change: FeePayerChange; changed: boolean; recheck: Outcome<FeePayerPreview> | null } | null {
+  const change = activeChange(s.feePayerChanges)
+  if (!change) return null
+  const a = deriveAllocation(s)
+  if (!a.input) return { change, changed: false, recheck: null }
+  const { feeBasis, minimum, cap, priceMicros, fees } = a.input
+  const changed = settingsChanged(change, { minimum, cap, priceMicros, basis: feeBasis, fees })
+  if (!changed) return { change, changed, recheck: null }
+  // the investors the change still covers: its standing lines, not whoever is in the allocation table now — someone
+  // withdrawn at a later hand-off and then reinstated is still adjusted and must be re-checked (Codex M6 r3 #1)
+  const lines = new Map(change.lines.filter((l) => !l.voided).map((l) => [l.investorId, l]))
+  const d = deriveFeePayerInput(s, change.feeId, change.to, (id) => lines.has(id))
+  if (!d.input) return { change, changed, recheck: { ok: false, errors: d.errors } }
+  const newCashDue: Record<string, number> = Object.create(null)
+  for (const l of lines.values()) newCashDue[l.investorId] = l.newCashDue
+  const recheck = previewFeePayerChange({
+    ...d.input,
+    applied: { targets: change.targets, newCashDue },
+  })
+  return { change, changed, recheck }
 }
 
 export function deriveDistribution(s: Pick<AppState, 'deal' | 'exit'>): Derived<WaterfallInput> {

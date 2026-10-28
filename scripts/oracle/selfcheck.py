@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Self-check the oracle against the hand calculations in docs/04_TEST_PLAN.md
-(§2.3 allocation, §2.4 waterfall, §3 sample deal, plus a few §2.2 reconcile rows).
+(§2.3 allocation, §2.4 waterfall, §3 sample deal, plus a few §2.2 reconcile rows;
+v0.8 §2.5: C-ALL-10 fee payer change and C-REC-7 withdrawal).
 Usage: python3 scripts/oracle/selfcheck.py"""
 import os
 import sys
@@ -348,6 +349,177 @@ eq("v0.7.2b Jose Garcia", name_words("Jos\u00e9 Garc\u00eda"), ["JOS\u00e9", "GA
 eq("v0.7.2b J.A. SMITH", name_words("J.A. SMITH"), ["J", "A", "SMITH"])
 eq("v0.7.2b non-ASCII digits ignored", digits_int("NW \u0661\u0662 7"), 7)
 eq("v0.7.2b edit distance by code point", edit_distance("NW001\U0001F600", "NW001"), 1)
+
+
+# ---------------------------------------------------------------- v0.8 §2.5: fee payer change (C-ALL-10)
+def fpc(investors, fees, fee_id, new_payer, basis="deducted", minimum=0, cap=None, price=GBP1, applied=None):
+    case = {"kind": "feePayerChange", "feeBasis": basis, "minimum": minimum, "cap": cap, "priceMicros": price,
+            "fees": list(fees), "feeId": fee_id, "newPayer": new_payer,
+            "investors": [{"id": i, "cashDue": d} for i, d in investors]}
+    if applied is not None:
+        case["applied"] = applied
+    return run(case)
+
+
+def codes(r):
+    return [(b["code"], b["investor"]) for b in r["blockers"]]
+
+
+F3I = {"id": "f", "kind": "percent", "value": 300, "payer": "investors"}
+F3C = {"id": "f", "kind": "percent", "value": 300, "payer": "company"}
+
+r = fpc([("A", 100000)], [F3I], "f", "company")
+a = r["investors"]["A"]
+eq("ALL-31 / C-ALL-10 ex1", (a["target"], a["newCashDue"], a["difference"], r["feeBefore"], r["feeAfter"],
+                             r["canApply"]), (97000, 97000, -3000, 3000, 2910, True))
+
+r = fpc([("A", 100000)], [F3C], "f", "investors")
+a = r["investors"]["A"]
+eq("ALL-32 / C-ALL-10 ex2", (a["target"], a["newCashDue"], a["difference"], r["canApply"]), (100000, 103093, 3093, True))
+x = alloc([("A", 103093, "none")], [PF3])["investors"]["A"]
+eq("ALL-32 fee/refund at N", (x["invested"], x["fees"], x["refund"]), (100000, {"pf": 3093}, 0))
+eq("ALL-32 at 1,030.92", alloc([("A", 103092, "none")], [PF3])["investors"]["A"]["invested"], 99999)
+
+r = fpc([("A", 100000)], [F3I], "f", "company", minimum=100000)
+eq("ALL-33 / C-ALL-10 ex3", (codes(r), r["canApply"], r["investors"]["A"]["newCashDue"]),
+   ([("after-no-participants", None), ("would-fall-below-minimum", "A")], False, 97000))
+
+r = fpc([("A", 100000)], [F3C], "f", "investors", basis="onTop")
+a = r["investors"]["A"]
+eq("ALL-34 (1) onTop", (a["target"], a["newCashDue"], a["difference"], r["canApply"]), (100000, 103000, 3000, True))
+x = alloc([("A", 103000, "none")], [PF3], basis="onTop")["investors"]["A"]
+eq("ALL-34 (1) fee at N", (x["invested"], x["fees"]), (100000, {"pf": 3000}))
+fees34 = [{"id": "fix", "kind": "perInvestor", "value": 2500, "payer": "investors"},
+          {"id": "p2", "kind": "percent", "value": 200, "payer": "investors"}]
+x = alloc([("A", 102500, "none")], fees34)["investors"]["A"]
+eq("ALL-34 (2) step 1", (x["invested"], x["fees"], x["refund"]), (98000, {"fix": 2500, "p2": 2000}, 0))
+r = fpc([("A", 102500)], fees34, "p2", "company")
+a = r["investors"]["A"]
+eq("ALL-34 (2)", (a["target"], a["newCashDue"], a["difference"], r["canApply"]), (98000, 100500, -2000, True))
+
+r = fpc([("A", 100000), ("B", 200000)], [F3I], "f", "company", basis="onTop", minimum=100000)
+eq("ALL-40 step 1", (r["investors"]["A"]["participatingBefore"], r["investors"]["B"]["participatingBefore"],
+                     r["investors"]["A"]["unchanged"]), (False, True, True))
+eq("ALL-40 blockers", (codes(r), r["canApply"]), ([("would-join", "A")], False))
+from oracle import _m_of  # noqa: E402
+eq("ALL-40 M values", (_m_of({"feeBasis": "onTop"}, [F3I], 100000), _m_of({"feeBasis": "onTop"}, [], 100000)),
+   (97087, 100000))
+
+r = fpc([("A", 100000), ("B", 50000)], [F3I], "f", "company", minimum=97000)
+eq("ALL-44", (r["canApply"], r["investors"]["A"]["newCashDue"], r["investors"]["B"]["unchanged"],
+              r["investors"]["B"]["newCashDue"], r["investors"]["B"]["difference"]), (True, 97000, True, 50000, 0))
+
+# sample deal (Test Plan §3): cash due list, platform 3% investors, legal £1,500 company, cap £150,000
+sample_due = [(i, d) for i, _, d in names]
+SFEES = [{"id": "platform", "kind": "percent", "value": 300, "payer": "investors"},
+         {"id": "legal", "kind": "fixed", "value": 150000, "payer": "company"}]
+r = fpc(sample_due, SFEES, "platform", "company", minimum=100000, cap=15000000, price=2413700)
+eq("ALL-35 blocked (Isla)", (codes(r), r["investors"]["isla"]["newCashDue"], r["canApply"]),
+   ([("would-fall-below-minimum", "isla")], 97000, False))
+r = fpc(sample_due, SFEES, "platform", "company", minimum=97000, cap=15000000, price=2413700)
+check("ALL-35 N = 97% each", all(r["investors"][i]["newCashDue"] * 100 == d * 97 for i, d in sample_due))
+eq("ALL-35 totals", (r["canApply"], r["totals"]["cashDue"], r["totals"]["newCashDue"], r["totals"]["difference"],
+                     r["feeBefore"], r["feeAfter"]), (True, 12400000, 12028000, -372000, 372000, 360840))
+eq("R-ALL-12.3 apply text numbers", (r["totals"]["topUpCount"], r["totals"]["topUpTotal"], r["totals"]["refundCount"],
+                                     r["totals"]["refundTotal"]), (0, 0, 12, 372000))
+saved_T = {i: v["target"] for i, v in r["investors"].items()}
+saved_N = {i: v["newCashDue"] for i, v in r["investors"].items()}
+
+r = fpc(sample_due, SFEES, "platform", "company", minimum=100000, cap=8000000, price=2413700)
+eq("ALL-41 over cap", (("over-cap", None) in codes(r), r["canApply"], r["totals"]["difference"],
+                       r["investors"]["amelia"]["difference"]), (True, False, None, None))
+
+# TC-ALL-42 / 46: re-check step 3 with the saved T_i and the current settings
+cur = [dict(SFEES[0], payer="company"), SFEES[1]]
+applied = {"targets": saved_T, "newCashDue": saved_N}
+r = fpc(sample_due, cur, "platform", "company", minimum=100000, cap=15000000, price=2413700, applied=applied)
+eq("ALL-42 min back to 1,000", codes(r), [("would-fall-below-minimum", "isla")])
+cur46 = cur + [{"id": "adm", "kind": "perInvestor", "value": 1000, "payer": "investors"}]
+r = fpc(sample_due, cur46, "platform", "company", minimum=97000, cap=15000000, price=2413700, applied=applied)
+eq("ALL-46 Isla 970 -> 960", (r["investors"]["isla"]["target"], r["investors"]["isla"]["investedAfter"],
+                              ("invested-differs", "isla") in codes(r), r["canApply"]), (97000, 96000, True, False))
+
+eq("ALL-38 (5) p' = 100% invalid",
+   fpc([("A", 100000)], [{"id": "a", "kind": "percent", "value": 6000, "payer": "investors"},
+                         {"id": "b", "kind": "percent", "value": 4000, "payer": "company"}], "b", "investors"),
+   {"ok": False})
+eq("ALL-38 (4) fixed fee not selectable",
+   fpc([("A", 100000)], [{"id": "b", "kind": "fixed", "value": 4000, "payer": "company"}], "b", "lead"), {"ok": False})
+
+# TC-ALL-43: random inputs (fixed seed), N gives I(N) = T and N - 1 gives I < T
+import random  # noqa: E402
+from oracle import single_invested  # noqa: E402
+rng = random.Random(20261023)
+bad43 = []
+n43 = 0
+for k in range(3000):
+    basis = rng.choice(["deducted", "onTop"])
+    fs = [{"id": "p%d" % j, "kind": "percent", "value": rng.randint(0, 1500), "payer": rng.choice(["investors", "company"])}
+          for j in range(rng.randint(1, 5))]
+    if rng.random() < 0.5:
+        fs.append({"id": "fx", "kind": "perInvestor", "value": rng.randint(1, 5000), "payer": "investors"})
+    sel_id = rng.choice([f["id"] for f in fs if f["kind"] == "percent"])
+    newp = rng.choice([q for q in ("investors", "company", "lead") if q != [f for f in fs if f["id"] == sel_id][0]["payer"]])
+    due_ = rng.randint(1, 5000000)
+    r = fpc([("A", due_)], fs, sel_id, newp, basis=basis)
+    if r.get("ok") is False:
+        continue
+    a = r["investors"]["A"]
+    if not a["participatingBefore"]:
+        continue
+    fs2 = [dict(f, payer=newp) if f["id"] == sel_id else f for f in fs]
+    cs = {"feeBasis": basis, "priceMicros": GBP1}
+    T, N = a["target"], a["newCashDue"]
+    n43 += 1
+    if single_invested(cs, fs2, N) != T or (N > 1 and single_invested(cs, fs2, N - 1) >= T):
+        bad43.append((k, due_, T, N))
+check("ALL-43 random 3,000: I(N) = T, I(N-1) < T", not bad43, repr(bad43[:3]))
+check("ALL-43 enough participating samples", n43 > 2500, repr(n43))
+
+# ---------------------------------------------------------------- v0.8 §2.5: withdrawal (C-REC-7)
+reviewed = {"t03": {"assign": "chloe"}, "t05": {"assign": "elena"}, "t12": {"assign": "kavya"},
+            "t11": {"reject": True}, "t14": {"reject": True}}
+
+
+def recw(withdrawn, lines_=None, adjusted=None):
+    case = {"kind": "reconcile", "asOf": "2026-10-16", "thresholdDays": 10, "commitments": commitments,
+            "lines": lines_ if lines_ is not None else lines, "decisions": reviewed, "withdrawn": withdrawn}
+    if adjusted is not None:
+        case["adjustedCashDue"] = adjusted
+    return run(case)
+
+
+base_r = recw([])
+r = recw(["lucas"])
+eq("REC-47 status", (r["commitments"]["lucas"]["status"], r["commitments"]["lucas"]["withdrawn"]), ("withdrawn", True))
+check("REC-47 not chased", all(x["id"] != "lucas" for x in r["chase"]))
+check("REC-47 not handed off", "lucas" not in r["handoff"])
+eq("REC-47 refunds", r["refunds"], [{"id": "hugo", "amount": 500000, "reason": "overpayment"},
+                                    {"id": "lucas", "amount": 300000, "reason": "withdrawn"}])
+eq("REC-47 receivable", (base_r["receivable"], base_r["receivable"] - r["receivable"]), (12400000, 300000))
+eq("REC-47 summary", r["withdrawnSummary"], {"count": 1, "refund": 300000})
+eq("REC-47 identity", (r["refundTotal"], r["checks"]["refundIdentity"]), (800000, True))
+
+t17 = {"id": "t17", "txnId": "t17", "date": "2026-10-16", "amount": 50000, "payer": "", "reference": "NW-012"}
+r = recw(["lucas"], lines + [t17])
+eq("REC-50", (r["lines"]["t17"]["status"], r["lines"]["t17"]["assignedTo"],
+              [x for x in r["refunds"] if x["id"] == "lucas"]), ("auto", "lucas",
+                                                                 [{"id": "lucas", "amount": 350000, "reason": "withdrawn"}]))
+
+r = recw(["james"])
+eq("REC-51", (any(x["id"] == "james" for x in r["chase"]), any(x["id"] == "james" for x in r["refunds"]),
+              base_r["receivable"] - r["receivable"], r["withdrawnSummary"]), (False, False, 2000000, {"count": 1, "refund": 0}))
+
+# C-ALL-11 effective cash due (TC-ALL-36 Amelia; TC-IO-47 David)
+adj = {i: d * 97 // 100 for i, d in sample_due}
+r = recw([], adjusted=adj)
+eq("ALL-36 Amelia effective", (r["commitments"]["amelia"]["cashDue"], r["commitments"]["amelia"]["status"],
+                               r["commitments"]["amelia"]["difference"]), (970000, "overpaid", 30000))
+check("ALL-36 Amelia refund", {"id": "amelia", "amount": 30000, "reason": "overpayment"} in r["refunds"])
+eq("IO-47 David chase", [x for x in r["chase"] if x["id"] == "david"], [{"id": "david", "outstanding": 42500}])
+eq("IO-47 David effective", r["commitments"]["david"]["cashDue"], 242500)
+eq("v0.8 compat: no new keys without new fields", sorted(rec(reviewed).keys()), ["aged", "commitments", "lines", "totals"])
+eq("v0.8 withdrawn unknown id invalid", recw(["nobody"]), {"ok": False})
 
 print("selfcheck: %d passed, %d failed" % (PASSED, len(FAILED)))
 sys.exit(1 if FAILED else 0)

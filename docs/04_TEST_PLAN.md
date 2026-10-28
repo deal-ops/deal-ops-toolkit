@@ -1,10 +1,11 @@
 # Deal Ops Toolkit — 测试计划
 
-版本 v0.7.2（最新修订 2026-10-23）· 2026-10-17 · 状态：**已批准（2026-10-17）** · 依据：PRD v0.7
+版本 v0.8（最新修订 2026-10-25；依据 PRD v0.8，Codex 3 轮评审通过，负责人 2026-10-25 批准）· 2026-10-17 · 状态：**已批准（2026-10-17）** · 依据：PRD v0.7
 v0.1 → v0.2：按 Codex 评审 #16 #17 #21 #24 修改：验收点逐条对应测试；独立复算扩展到对抗性用例；新增边界、非法输入、格式、端到端用例；示例交易按 v0.2 默认口径重写并给出可冻结的数字。所有手算数字已用 Python `decimal` 复核。
 v0.2 → v0.3：按第二轮 R2-01/04/05/08/09/10/11/12/13 补用例；每个用例标注到期里程碑；手工清单补重置步骤；退出分配的默认条件写全。
 v0.7 → v0.7.1（2026-10-20，澄清）：§6 导出金额的负数保留负号。
 v0.7.1 → v0.7.2（2026-10-23）：加 TC-X-04（PRD v0.7.6 R-X-02，保存失败按原因提示）。
+v0.7.2 → v0.8（2026-10-23，2026-10-25 批准）：加 §2.5（PRD v0.8：TC-REC-42 至 54、TC-ALL-31 至 49、TC-IO-47、TC-X-05 至 20，里程碑 〔M5〕〔M6〕）、E2E-08/09、M-12/13、追踪矩阵 4 行；独立复算在 M6 增加 C-ALL-10 和撤资。
 
 ---
 
@@ -203,6 +204,64 @@ v0.7.1 → v0.7.2（2026-10-23）：加 TC-X-04（PRD v0.7.6 R-X-02，保存失�
 | TC-X-03 〔M4〕 | R-X-04 | 主题切换：默认 → 选 Dark → 重新打开 → 清空全部数据 | 默认 System、页面不带主题标记；选 Dark 后页面标记为深色，重新打开仍是 Dark；「清空全部数据」后回到 System，本机不再存主题 | — |
 | TC-X-04 〔M4〕 | R-X-02 | 本机保存：① 存储抛 `QuotaExceededError`（含 Firefox 的 `NS_ERROR_DOM_QUOTA_REACHED`、旧浏览器的 code 22 / 1014）；② 抛其他错误（如 `SecurityError`），或浏览器在读取 `localStorage` 时就拒绝（屏蔽站点数据时的常见情况）、`localStorage` 为 `null`；③ 之后保存恢复成功 | ① 显示「storage for this page is full」那句，不显示「storage is blocked」；② 显示「storage is blocked」那句；③ 提示消失；提示在读屏会播报的状态区域里；任何情况下应用都不报错 | — |
 
+### 2.5 v0.8：追款和查询文字、操作记录、撤资、更换付费方（PRD v0.8，决定 11）
+
+到期里程碑：〔M5〕= v0.8 第一个 PR（追款：R-REC-10、R-X-08、R-X-01.2）；〔M6〕= 第二个 PR（结算前变更：R-REC-11、R-REC-12、R-ALL-12）。「示例」指示例交易（§3，截止日 2026-10-16，最低额 £1,000，3% 平台费由投资人付、从打款里扣，£1,500 法律费由公司付，上限 £150,000），「复核后」指确认 t03、t05、t12 并拒绝 t11、t14 之后。时间由测试注入固定时钟，不读系统时间。
+
+| 编号 | 对应 | 输入 | 期望 |
+|---|---|---|---|
+| TC-REC-42 〔M5〕 | C-REC-8 模板 A | 示例复核后，David Kim（应打款 £2,500，已收 £2,000，备注号 NW-004） | 文字逐字等于：`Hi David Kim,` 空行 `For Northwind Robotics — Seed SPV (fictional sample), we have received £2,000.00 GBP of the £2,500.00 GBP due from you, so £500.00 GBP is still outstanding. Please pay it using the payment reference NW-004 exactly as written.` 空行 模板 A 第二段原文 空行 `Thank you.` |
+| TC-REC-43 〔M5〕 | C-REC-8 模板 A | 示例里 James Whitfield（已收 £0：t16 晚于截止日）；同一名单改为 USD 交易 | 第一句为 `For Northwind Robotics — Seed SPV (fictional sample), we have not yet received the £20,000.00 GBP due from you.`，其余与 TC-REC-42 同结构；USD 时金额写 `US$20,000.00 USD` |
+| TC-REC-44 〔M5〕 | C-REC-8 模板 B, R-REC-10.2 | 示例 t03（£20,000.00，2026-10-07，付款人 CHLOE MARTIN）对候选 Chloe Martin；另造一条流水：付款人 `BEN OKAFOR`、备注 `NW-002 =cmd`、交易 ID `T-SECRET`，候选为 Amelia Hart | 第一条：`we received a payment of £20,000.00 GBP on 7 October 2026 that we could not match…`，逐字等于模板 B；第二条的文字里不出现 `BEN OKAFOR`、`NW-002`、`=cmd`、`T-SECRET` 中任何一个 |
+| TC-REC-45 〔M5〕 | R-REC-10.1, I-09 | 示例复核后导出追款清单 CSV；另一名单中某人姓名为 `=HYPERLINK("x")` | 每行多一列 `message`，等于该人的模板 A 文字（含换行，按 CSV 引号规则）；以 `=` 开头的姓名在 `name` 列转义；`message` 列以 `Hi ` 开头，不需转义 |
+| TC-REC-46 〔M5〕 | R-REC-10.1–10.3 | 界面：示例复核前点 t03 下 Chloe 的「Copy query」；复核后点 David 的「Copy message」 | 剪贴板内容分别等于 TC-REC-44、TC-REC-42 的文字；随后显示「Copied. Send it yourself from your usual email.」；页面没有 `mailto:` 链接指向投资人，没有打开新窗口；剪贴板不可用时文字被选中供手动复制 |
+| TC-X-05 〔M5〕 | C-X-1, R-X-08.1/08.3 | 交易设置 initials 填 `HY`；载入示例 → 复核 5 步 → 带入分配 → 复制一次追款文字 | 记录按顺序为 `sample_loaded`、`confirm`×3、`not_in_deal`×2、`handoff_allocation`、`message_copied`；`seq` 从 1 连续；`time` 为注入时钟的 ISO 8601 带时区偏移；每条 initials 为 `HY`（载入示例不清除 initials，PRD 字段表）；`handoff_allocation` 的 detail 有快照版本号、人数和合计；`message_copied` 不含文字本身 |
+| TC-X-06 〔M5〕 | C-X-1 | 示例复核后修改 t03 的金额；再在投资人姓名里连续输入 5 次 | 一条 `decision_voided`，原因为流水被改；姓名输入不产生任何记录 |
+| TC-X-07 〔M5〕 | C-X-1 容量, R-X-08.4 | 引擎直接造 3,999 / 4,000 / 5,000 / 5,001 条记录；在第 4,500 条时导出一次 | 3,999 条无提示，4,000 条起显示 80% 提示；5,001 条时最早的被删，最前面是 `truncated`，写明删除条数、`seq` 范围、全部已导出；`seq` 不重复使用；若删掉的记录里有未导出的，提示变为「N entries were removed before export.」；任何时候操作都照常完成 |
+| TC-X-08 〔M5〕 | R-X-08.5, R-X-02 | 保存时：第一次 `setItem` 抛 `QuotaExceededError`，删掉部分记录后成功；另一种情况下删记录后仍然失败 | 前者保存成功、出现 `truncated`、不显示「存储已满」；后者显示 R-X-02 的「storage for this page is full」那句；两种情况交易数据都不丢 |
+| TC-X-09 〔M5〕 | R-X-08.2, §5.5 | 导出操作记录 CSV；「清空全部数据」；再「载入示例」 | 表头逐字为 `seq,time,initials,event,investor_id,investor_name,transaction_id,amount,detail,currency`；文本列按 I-09 转义；导出写入一条 `log_exported`；清空后记录为空；载入示例后只有一条 `sample_loaded` |
+| TC-X-10 〔M5〕 | 本机保存 | v1.1.1 格式的已保存数据（没有记录、撤资、付费方变更字段） | 正常载入，新字段为空；交易数据完整 |
+| TC-X-11 〔M5〕 | R-X-01.2, C-X-1 | 引导脚本；一路「Do this for me」走到结束；再跳回第 1 章重走 | 仍是 12 步；第 6 步多一句介绍「Copy message」，第 2 步不变；结束卡片有 Activity log 那句和「Try next」第 3 条（撤销一个决定看 Copy query），链接打开的页面和控件与《引导设计》v0.3 一致；操作记录里有引导代做的每个决定，detail 为 `guided tour`；跳回重走后记录从 `sample_loaded` 重新开始，没有重复 |
+| TC-X-12 〔M6〕 | R-X-01.2 | 引导结束卡片；撤资和换付费方面板 | 「Try next」第 1、2 条出现，文字与《引导设计》v0.3 一致，金额从计算结果读取（£3,000.00、£1,000.00、£970.00）；链接只带到对应控件，不改数据；两个面板各有一句说明 |
+| TC-X-20 〔M6〕 | R-X-01.2 结束卡第 2 条 | 走完引导后：① 不改；② 把上限改为 £80,000；③ 把 James Whitfield 的应打款额改为 £980 并重新带入 | ① 显示第 2 条，含「lower the minimum commitment (Deal settings) to £970.00」；② 和 ③ 不显示第 2 条（③ 中用最低额 £970 另算的预览仍有阻断：James 第一步 T = £950.60，第三步 £950.60 < £970 被排除） |
+| TC-REC-47 〔M6〕 | C-REC-7, R-REC-11.2 | 示例复核后把 Lucas Meyer（已收 £3,000）标为撤资（勾选同意，日期默认 2026-10-16） | 状态 Withdrawn；不在追款清单；带入分配后分配里没有 Lucas；待退款有 Lucas £3,000.00，理由 `Withdrawn`；应收合计少 £3,000.00；汇总显示「Withdrawn: 1 investor, £3,000.00 to refund」；新校验：待退款合计 = £3,000.00 + Hugo 多付 £5,000.00 = £8,000.00 |
+| TC-REC-48 〔M6〕 | R-REC-11.1 | 不勾选同意就点确认；撤资日期 `31/02/2026`；标记后撤销 | 前两种不能标记并写明原因；撤销后回到 Paid in full；记录依次有 `withdrawn`、`withdrawal_undone` |
+| TC-REC-49 〔M6〕 | C-REC-7 作废 | Lucas 撤资后：① 改他的姓名、邮箱、应打款额；② 改他的付款备注号；③ 删除他；④ 整表替换导入，Lucas 的 ID 和备注号不变 | ① 和 ④ 撤资保留；② 和 ③ 撤资作废并记录 `withdrawal_voided`（写明原因） |
+| TC-REC-50 〔M6〕 | R-REC-11.3 | Lucas 撤资后追加流水：日期 2026-10-16（不晚于截止日），£500，备注 `NW-012` | 自动入账给 Lucas；待退款变为 £3,500.00 |
+| TC-REC-51 〔M6〕 | C-REC-7 | 示例中把 James Whitfield（已收 £0）标为撤资 | 不在追款清单、不在待退款；应收合计少 £20,000.00 |
+| TC-REC-52 〔M6〕 | R-X-07, C-REC-7 | 带入分配后标记、撤销、作废撤资各一次 | 每次之后分配都显示「已过期，重新带入」 |
+| TC-ALL-31 〔M6〕 | C-ALL-10 例 1 | 从打款里扣，最低额 0，无上限，只有一项 3% 费用；应打款额 £1,000.00；投资人付 → 公司付 | T £970.00；N £970.00；差额 −£30.00；该项费用应用前 £30.00（投资人付），应用后 £29.10（公司付） |
+| TC-ALL-32 〔M6〕 | C-ALL-10 例 2 | 同上，公司付 → 投资人付 | T £1,000.00；N £1,030.93（£1,030.92 时投资额 £999.99）；差额 +£30.93；投资人费用 £30.93，退款 £0.00 |
+| TC-ALL-33 〔M6〕 | C-ALL-10 例 3, R-ALL-12.4 | 例 1 但最低额 £1,000 | 第三步阻断，写出该投资人和「would fall below the minimum commitment」；只有这一位投资人，所以同时有「没有可分配的投资人」阻断；不能应用 |
+| TC-ALL-34 〔M6〕 | C-ALL-10 | ① 加在之上，3% 公司付 → 投资人付，应打款额 £1,000.00；② 从打款里扣，每人固定费 £25 + 2% 投资人付，应打款额 £1,025.00，把 2% 改成公司付 | ① T £1,000.00，N £1,030.00（⌊1,030.00 ÷ 1.03⌋ = £1,000.00，费用 £30.00），差额 +£30.00；② T £980.00（费用 £20.00 + £25.00，退款 0），N £1,005.00，差额 −£20.00 |
+| TC-ALL-35 〔M6〕 | C-ALL-10, 示例 | 示例复核后带入；平台费改为公司付；再把最低额改为 £970 后重算 | 先阻断（Isla Campbell，N £970.00 低于 £1,000）；最低额 £970 后 12 人 N = 应打款额 × 97%，合计 £124,000.00 → £120,280.00，差额合计 −£3,720.00；平台费变为公司付 £3,608.40（£120,280.00 × 3%） |
+| TC-ALL-36 〔M6〕 | C-ALL-11, R-REC-12, R-ALL-12.3/12.5 | 接 TC-ALL-35，勾选同意后应用；再撤回 | 应用后：名单里保存的应打款额不变；Amelia 有效应打款额 £9,700.00，显示「was £10,000.00 · −£300.00 fee payer change (Platform fee: investors → company)」，状态多付 +£300.00 并进待退款；横幅显示变更生效；分配已过期；记录有一条汇总和 12 条逐人。撤回后：付费方回到 investors，有效应打款额回到原值，记录标为已撤回并写入 `fee_payer_change_reversed` |
+| TC-ALL-37 〔M6〕 | C-ALL-11 作废, R-ALL-12.5 | 接 TC-ALL-36 应用后：① 手动把 Amelia 的应打款额改为 £10,500；② 在分配里把平台费费率改为 4%；③ 有生效变更时再选另一项费用 | ① 只有 Amelia 这行作废，显示「This fee payer change no longer applies — redo it」，记录 `adjustment_voided`；② 整条变更作废，全部回到原应打款额，记录 `fee_payer_change_voided`；③ 面板只显示生效的变更和「Reverse」 |
+| TC-ALL-38 〔M6〕 | R-ALL-12.1, C-ALL-10 | ① 分配投资人是直接导入的；② 分配已过期；③ 带入后手动改了分配投资人表；④ 选固定费用；⑤ 从打款里扣，投资人已付 60%，把 40% 的公司付费用改为投资人付 | ①–③ 面板禁用并写明原因；④ 固定费用不在可选列表里；⑤ 输入错误（投资人百分比合计 100%） |
+| TC-ALL-39 〔M6〕 | R-ALL-12.2/12.3 | 分别改为投资人付、公司付、发起人付 | 前两种显示对应的同意提示，不勾选「Consent evidence received」不能应用；发起人付显示「Inform only — no consent needed」，可直接应用；确认按钮写出补款和退款人数及金额 |
+| TC-X-13 〔M5〕 | C-X-1 | 示例复核后用 `fixtures/bank.csv` 整表替换流水（清掉 5 个人工决定）；再人工确认 1 条流水，然后手动删掉它 | 替换只产生 1 条 `decision_voided`，detail 写明 5 条；手动删产生 1 条，原因为流水被删 |
+| TC-X-14 〔M5〕 | R-X-05 | 渲染对账页 | 新术语 MT103 / UETR 有一句解释（TC-X-01 的 11 个照旧） |
+| TC-X-15 〔M6〕 | R-X-05 | 渲染撤资和换付费方面板 | 新术语 withdrawal、fee payer 各有一句解释 |
+| TC-X-16 〔M5〕 | 字段表 initials, R-X-08.3 | initials 输入 `H@Y`，做一个决定；改回 `HY` 再做一个 | `H@Y` 时字段报错，那条记录的 initials 为空；改回后的记录为 `HY`；修改 initials 本身不产生记录 |
+| TC-REC-53 〔M6〕 | C-REC-7 × C-ALL-11 | 示例复核后：先标 Lucas 撤资，再应用平台费改为公司付（最低额 £970，覆盖 11 人）；然后撤销 Lucas 的撤资；另一次：应用后新增一位投资人 | Lucas（和新增的人）标「Not covered by the active fee payer change — reverse and redo」；对账「待复核」，带入分配禁用；撤回变更后标记消失 |
+| TC-REC-54 〔M6〕 | C-REC-7, C-ALL-11 | 变更生效、Lucas 撤资后，把 Amelia 的备注号 `NW-001` 改成 `NW 001`、Lucas 的 `NW-012` 改成 `NW 012` | 都不算修改：Amelia 的有效应打款额仍是 £9,700.00，没有作废提示和记录；Lucas 仍是撤资 |
+| TC-ALL-40 〔M6〕 | C-ALL-10 第三步 | 加在之上，最低额 £1,000，A 应打款额 £1,000、B 应打款额 £2,000，3% 投资人付 → 公司付 | 第一步 A 不参与（M = ⌊1,000 ÷ 1.03⌋ = £970.87 < £1,000），B 参与；第三步 A 会参与（M = £1,000.00），阻断「would join the allocation」，写出 A |
+| TC-ALL-41 〔M6〕 | C-ALL-10 第一步 | 示例复核后把上限改为 £80,000，再打开换付费方面板 | 阻断「The round is over the cap — resolve the scale-back first」，另有缩减后低于最低额的阻断（如 Isla Campbell）；不显示差额，不能应用 |
+| TC-ALL-42 〔M6〕 | C-ALL-11 提醒 | 接 TC-ALL-36 应用后，把最低额从 £970 改回 £1,000 | 变更不作废；显示「Allocation settings changed since this fee payer change — check the preview」；重算的第三步对 Isla Campbell 显示阻断 |
+| TC-ALL-43 〔M6〕 | C-ALL-10 第二步 | 随机生成两种口径、1–5 项投资人百分比费、有无每人固定费的输入（固定种子，3,000 组） | 每组的 N_i 都使 I(N_i) = T_i，且 N_i − 1 便士时 I < T_i |
+| TC-X-17 〔M5〕 | C-X-1 import | ① 示例复核后用示例自己的流水文件整表替换；② 再追加同一文件（全部是相同交易 ID 的重复行）；③ 替换承诺名单，使一条原来没匹配的流水变成精确匹配 | ① `import` 的自动入账笔数为 9；② 新增 0 行、自动入账 0；③ 自动入账笔数为 1 |
+| TC-X-18 〔M5〕 | §5.5 操作记录 CSV | GBP 交易做一个决定，把交易改成 USD 再做一个决定，导出 | 第一行 `currency` 为 `GBP`，第二行为 `USD`；没有金额的事件也写当时的币种 |
+| TC-X-19 〔M5〕 | 本机保存 | schema 2 的存档去掉 `withdrawals` 或 `feePayerChanges`；另一份只去掉 `log` | 前两种整份不读（不默默算出没有撤资和调整的钱）；只缺 `log` 时交易数据照常读入 |
+| TC-ALL-44 〔M6〕 | C-ALL-10/11 覆盖范围 | 从打款里扣，最低额 £970；A 应打款额 £1,000、B £500，3% 投资人付 → 公司付 | 预览通过：A 的 N £970.00，B 标「Not participating — unchanged」；应用后 B 在覆盖范围内，**不**标「Not covered…」，带入不受阻 |
+| TC-ALL-45 〔M6〕 | R-ALL-12.5 | 接 TC-ALL-36 应用后立即撤回（分配已过期）；另一次在对账「待复核」时撤回 | 两次都能撤回，不要求再勾选同意 |
+| TC-ALL-46 〔M6〕 | C-ALL-11 保存的设置 | 接 TC-ALL-36 应用后，给投资人加一项每人固定费 £10，保存并刷新页面 | 显示「Allocation settings changed…」提醒；用保存的 T_i 重算：12 人的投资额都比 T_i 少 £10.00（例如 Isla 从 £970.00 变为 £960.00），全部列为阻断并写出名字 |
+| TC-ALL-47 〔M6〕 | C-ALL-10/11 覆盖范围作废 | 接 TC-ALL-44 应用后：把 B 的备注号改成另一个、应打款额从 £500 改为 £1,000（ID 不变）；刷新页面 | B 的行作废，标「Not covered by the active fee payer change — reverse and redo」，带入禁用；刷新后仍是如此 |
+| TC-ALL-48 〔M6〕 | C-ALL-11 作废是永久的 | 接 TC-ALL-36 应用后：把 Amelia 的应打款额提交为 £10,500，再提交回 £10,000；另一次直接提交 £10,000（与原值相同） | 第一种：提交 £10,500 时作废，改回 £10,000 后仍作废，有效应打款额为名单值 £10,000.00，标「Not covered…」；第二种：不算修改，有效应打款额仍是 £9,700.00 |
+| TC-ALL-49 〔M6〕 | C-ALL-10 第三步, R-ALL-08 | 最低额 0，无上限，一位投资人应打款额 £1,000，3% 投资人付，公司付整笔固定费用 £960；把 3% 改为公司付 | N = I = T = £970.00，但公司付费用 £960.00 + £29.10 = £989.10 > 投资总额 £970.00（打给公司为 −£19.10），阻断，不能应用 |
+| TC-IO-47 〔M6〕 | §5.5 v0.8 导出, R-ALL-10 | 示例复核后：先标 Lucas 撤资，再把最低额改为 £970、平台费改为公司付并应用（变更覆盖 11 人）；导出对账台账、追款清单；带入后复制确认单 | 台账里 t13 的 `withdrawn_on` 为 `2026-10-16`，其他行为空；追款清单 CSV 里 David 一行 `committed` 为 `2425.00`、`committed_original` 为 `2500.00`、`committed_adjustment` 为 `-75.00`，没有调整的列为空；两个文件最后一列仍是 `currency`；确认单多一节「Withdrawn before closing (refund in full):」和「- Lucas Meyer: £3,000.00」 |
+
+独立复算（oracle）在 〔M6〕 增加：C-ALL-10 的 T、N 和差额（随机生成的两种口径、多项费用、带上限和最低额的输入，与 TS 逐人对比），以及撤资后的待退款合计。由独立代理按 PRD 文字实现。
+
 ## 3. 示例交易（v0.2 口径，冻结用）
 
 虚构「Northwind Robotics 种子轮 SPV」。设置：GBP；截止日 2026-10-16；SPV 代持；费用从打款里扣；最低 £1,000；上限 £150,000；股价 £2.4137；投资人付平台费 3%；公司付法务行政费 £1,500（固定）。
@@ -260,6 +319,8 @@ v0.7.1 → v0.7.2（2026-10-23）：加 TC-X-04（PRD v0.7.6 R-X-02，保存失�
 - E2E-05 〔M3〕 引导：从第一步走到最后一步，每步的高亮目标都存在。
 - E2E-06 首次打开显示免责声明；页脚有免责声明和反馈邮件链接。
 - E2E-07 〔M3〕 375px 宽度下完成手工清单 M-01 至 M-07 的操作（P1）。
+- E2E-08 〔M5〕 示例复核后复制一条追款文字；撤销 t03 的确认，再复制 Chloe 的查询文字，打开操作记录看到对应条目；全程只有静态资源 GET（复制不产生任何请求）。
+- E2E-09 〔M6〕 从复核后的示例开始：标 Lucas Meyer 撤资 → 带入分配看不到他；把最低额改为 £970，平台费改为公司付并应用 → 对账显示调整和多付；撤回后恢复。
 
 ## 5. 手工验收清单
 PR 只验与本 PR 相关的项；发布前全部验一遍。每一项开始前先点「Reset sample」恢复示例交易的初始状态，除非该项写明接着上一项做。
@@ -274,15 +335,18 @@ PR 只验与本 PR 相关的项；发布前全部验一遍。每一项开始前�
 - [ ] M-09 深色模式下所有文字可读；页面上的主题切换 System / Light / Dark 三档都能用（P1）
 - [ ] M-10 手机上完成 M-01 到 M-03（P1）
 - [ ] M-11 用自己编的 5 人名单从头走一遍，记下卡住的地方
+- [ ] M-12 〔v0.8〕（接 M-02）复制一条追款文字；撤销一笔确认，再复制一条查询文字，贴到邮件草稿里读一遍；操作记录里能看到刚才的每一步，导出 CSV 能打开
+- [ ] M-13 〔v0.8〕（接 M-02）标一位投资人撤资、换一次付费方、再撤回，每一步的数字和说明看得懂
 
 ## 6. 导出格式
-- 对账台账：`transaction_id, date, amount, payer, reference, status, investor_id, investor_name, decided_by(auto|person)`
-- 追款清单：`investor_id, name, email, committed, received, difference, status`
+- 对账台账：`transaction_id, date, amount, payer, reference, status, investor_id, investor_name, decided_by(auto|person)`；v0.8 加 `withdrawn_on`
+- 追款清单：`investor_id, name, email, committed, received, difference, status`；v0.8 起 `committed` 为有效应打款额，加 `committed_original, committed_adjustment, message`
+- 操作记录（v0.8）：`seq, time, initials, event, investor_id, investor_name, transaction_id, amount, detail, currency`
 - 关闭分配：`investor_id, name, scheme, received, invested, units, fee_<每项费用名>, fees_total, refund, seis_eis_claimable_shares, seis_eis_claimable_amount, status`
 - 退出分配：`investor_id, name, capital, shares_display, distribution, profit, multiple_excl_entry_fees`（只用于阅读，不用于再导入）
 - **导出持仓**（可再导入）：`investor_id, name, capital, shares_display, share_price`。再导入时只取 `capital` 和 `share_price`。
 - 金额为不带货币符号的小数（如 `1234.56`），负数保留前面的负号；文件名包含币种（如 `allocation_GBP.csv`）。
-- 每种导出的最后一列为 `currency`，每行写交易币种的 ISO 代码（如 `GBP`）；列名固定，不随币种变化（v0.7.5，决定 10）。
+- 每种导出的最后一列为 `currency`，每行写交易币种的 ISO 代码（如 `GBP`）；列名固定，不随币种变化（v0.7.5，决定 10）。例外（v0.8）：操作记录每行写**该事件发生时**的币种。
 
 ## 7. 需求追踪矩阵
 
@@ -311,6 +375,9 @@ PR 只验与本 PR 相关的项；发布前全部验一遍。每一项开始前�
 | R-REC-07 | TC-REC-19 |
 | R-REC-08 | TC-REC-21, 23, 29 |
 | R-REC-09 | TC-REC-22, 27, TC-IO-11 |
+| R-REC-10 | TC-REC-42, 43, 44, 45, 46, E2E-08, M-12 |
+| R-REC-11 | TC-REC-47, 48, 49, 50, 51, 52, 53, 54, E2E-09, M-13 |
+| R-REC-12 | TC-ALL-36, 37, E2E-09 |
 | R-ALL-01 | TC-ALL-19, TC-IO-16 |
 | R-ALL-02 | TC-ALL-11, 15, 19, 21 |
 | R-ALL-03 | TC-ALL-07, 08, 21 |
@@ -323,6 +390,7 @@ PR 只验与本 PR 相关的项；发布前全部验一遍。每一项开始前�
 | R-ALL-09 | TC-ALL-18, 23 |
 | R-ALL-10 | TC-ALL-20, 24, 30 |
 | R-ALL-11 | E2E-01b, E2E-02b |
+| R-ALL-12 | TC-ALL-31 至 49, TC-IO-47, E2E-09, M-13 |
 | R-DIS-01 | TC-DIS-21, 22, 23, 24, 26, TC-IO-17, E2E-01b |
 | R-DIS-02 | TC-DIS-03, 08 |
 | R-DIS-03 | TC-DIS-01, 04 ~ 08, 16, 20 |
@@ -334,6 +402,8 @@ PR 只验与本 PR 相关的项；发布前全部验一遍。每一项开始前�
 | R-X-02 | E2E-03, 04, TC-X-04 |
 | R-X-03 | E2E-06, M-08 |
 | R-X-04 | TC-X-03, E2E-07, M-09, M-10（P1） |
-| R-X-05 | TC-X-01, M-08 |
+| R-X-05 | TC-X-01, TC-X-14, TC-X-15, M-08 |
 | R-X-06 | TC-X-02, E2E-06 |
 | R-X-07 | E2E-02a, E2E-02b |
+| R-X-08 | TC-X-05, 06, 07, 08, 09, 10, 13, 16, 17, 18, 19, E2E-08, M-12 |
+| R-X-01.2 | TC-X-11, TC-X-12, TC-X-20, E2E-05 |

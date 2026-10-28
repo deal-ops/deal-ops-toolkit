@@ -184,3 +184,44 @@ test.describe('375px', () => {
     expect(problems).toEqual([])
   })
 })
+
+/** The focused element is visible, starts inside the viewport, and its start is not under the end card (guide v0.3 §3.2, §7). */
+async function focusedInView(page: Page, what: string) {
+  const f = page.locator(':focus')
+  await expect(f, `${what}: something has focus`).toHaveCount(1)
+  await expect(f, `${what}: visible`).toBeInViewport()
+  const t = (await f.boundingBox())!
+  const c = (await page.getByTestId('tour-end').boundingBox())!
+  const h = Math.min(40, t.height)
+  const overlap = t.x < c.x + c.width && t.x + t.width > c.x && t.y < c.y + c.height && t.y + h > c.y
+  expect(overlap, `${what}: not under the end card`).toBe(false)
+}
+
+for (const viewport of [undefined, { width: 375, height: 800 }]) {
+  test.describe(viewport ? '375px' : 'default size', () => {
+    if (viewport) test.use({ viewport })
+    test('E2E-05 end card "Try next": each Take me to it focuses its control in view; item 2 still leads somewhere after item 1', async ({ page }) => {
+      await walkTour(page)
+      const end = page.getByTestId('tour-end')
+      const links = end.getByRole('button', { name: 'Take me to it' })
+      await expect(links).toHaveCount(3)
+      await links.nth(0).click()
+      await expect(page.getByRole('button', { name: 'Mark Lucas Meyer withdrawn' })).toBeFocused()
+      await focusedInView(page, 'item 1')
+      await links.nth(1).click()
+      await expect(page.locator('[data-tour="fee-payer"] select').first()).toBeFocused()
+      await focusedInView(page, 'item 2')
+      await links.nth(2).click()
+      await expect(page.getByRole('button', { name: 'Undo decision on t03' })).toBeFocused()
+      await focusedInView(page, 'item 3')
+      // do item 1: item 2 stays, and now lands on the reason the panel is unavailable (Codex M6 r2 #1)
+      await links.nth(0).click()
+      await page.getByRole('button', { name: 'Mark Lucas Meyer withdrawn' }).click()
+      await page.getByLabel('Written consent from the investor received').check()
+      await page.getByRole('button', { name: 'Confirm withdrawal' }).click()
+      await end.getByRole('button', { name: 'Take me to it' }).first().click()
+      await expect(page.getByTestId('fee-payer-block')).toBeFocused()
+      await focusedInView(page, 'item 2 after item 1')
+    })
+  })
+}

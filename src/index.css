@@ -1287,3 +1287,85 @@ tr.tour-target > td:first-child {
     padding-bottom: 0;
   }
 }
+
+/* ---------- v0.8: messages to investors, tour "Try next" (R-REC-10, guide v0.3 §3.2) ---------- */
+.copy-status:empty {
+  margin: 0; /* stays in the accessibility tree, so the next message is announced */
+}
+.copy-status {
+  margin-left: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.copy-box {
+  display: block;
+  width: 100%;
+  min-width: 260px;
+  margin-top: 6px;
+  font: inherit;
+  font-size: 13px;
+}
+.tour-subhead {
+  font-weight: 600;
+  color: var(--text-strong);
+  margin: 10px 0 4px;
+}
+.try-next {
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+.try-next li {
+  margin-bottom: 4px;
+}
+.try-next button.link {
+  min-height: 44px;
+}
+
+/* ---------- v0.8: withdrawals and fee payer changes (PRD R-REC-11, R-REC-12, R-ALL-12) ---------- */
+/* a second line under a figure: where it came from, or why it no longer applies */
+.sub {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: normal;
+}
+.sub.warn-text {
+  color: var(--warn);
+}
+.withdraw-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 520px;
+}
+.withdraw-form > label:not(.check) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+/* the cash due cell carries a second line on where the amount came from: keep it readable on a phone */
+td.due {
+  min-width: 190px;
+}
+label.check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+.fee-payer {
+  margin: 24px 0 8px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-box);
+}
+.fee-payer h3 {
+  margin-top: 0;
+}
+.fee-payer tfoot th,
+.fee-payer tfoot td {
+  font-weight: 600;
+}

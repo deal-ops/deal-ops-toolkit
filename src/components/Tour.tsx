@@ -1,6 +1,7 @@
 // Guided tour card (R-X-01, docs/en/05_GUIDED_TOUR.md v0.2). Non-modal, keyboard-first; no overlay, no inline styles.
 import { useEffect, useId, useRef, useState } from 'react'
-import { CHAPTERS, STEPS, firstStepOf, type Chapter, type Ctx } from '../tour/script'
+import { CHAPTERS, STEPS, firstStepOf, type Chapter, type Ctx, type TryNext } from '../tour/script'
+import { byTour } from '../tour/anchor'
 
 export function TourCard({
   index,
@@ -101,7 +102,7 @@ export function TourCard({
   }, [index, done, onBack, onNext, onExit])
 
   const takeMeToIt = () => {
-    const el = document.querySelector<HTMLElement>(`[data-tour="${targets[0]}"]`)
+    const el = byTour(targets[0])
     const focusable = el?.matches('button, input, select, a') ? el : el?.querySelector<HTMLElement>('button:not(:disabled), input, select, a')
     focusable?.focus()
   }
@@ -189,7 +190,7 @@ export function TourCard({
 function findTargets(key: string): HTMLElement[] {
   return key
     .split('|')
-    .map((t) => document.querySelector<HTMLElement>(`[data-tour="${t}"]`))
+    .map((t) => byTour(t))
     .filter((e): e is HTMLElement => e !== null)
 }
 
@@ -202,7 +203,12 @@ export function TourNote({
   onCancel,
   onReplay,
   onClearOwn,
+  tryNext = [],
+  onTakeMeTo,
+  top = false,
 }: {
+  /** the end card sits at the top while its "Take me to it" target would be under it (guide v0.3 §3.2) */
+  top?: boolean
   kind: 'start' | 'end' | 'stale' | 'jump'
   step?: number
   replaces?: boolean
@@ -210,12 +216,15 @@ export function TourNote({
   onCancel: () => void
   onReplay?: () => void
   onClearOwn?: () => void
+  /** end card (guide v0.3 §3.2): what to try next on the sample */
+  tryNext?: TryNext[]
+  onTakeMeTo?: (t: TryNext) => void
 }) {
   const primary = useRef<HTMLButtonElement>(null)
   const titleId = useId()
   useEffect(() => primary.current?.focus({ preventScroll: true }), [kind])
   return (
-    <aside className="tour-card" role="dialog" aria-modal="false" aria-labelledby={titleId} data-testid={`tour-${kind}`}>
+    <aside className={top ? 'tour-card pos-top' : 'tour-card'} role="dialog" aria-modal="false" aria-labelledby={titleId} data-testid={`tour-${kind}`}>
       {kind === 'start' && (
         <>
           <p className="tour-count" id={titleId}>
@@ -274,8 +283,24 @@ export function TourNote({
           </p>
           <p>
             Receipts → closing → exit. Each investor&apos;s exit share follows the amount invested, fees excluded. Tiered carry is under the carry type switch.
-            To try your own deal, clear the sample and import your investor list and bank statement.
           </p>
+          <p>Every decision you just made is in the Activity log.</p>
+          {tryNext.length > 0 && (
+            <>
+              <p className="tour-subhead">Try next</p>
+              <ul className="try-next">
+                {tryNext.map((t) => (
+                  <li key={t.target}>
+                    {t.text}{' '}
+                    <button type="button" className="link" onClick={() => onTakeMeTo?.(t)}>
+                      Take me to it
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <p>To try your own deal, clear the sample and import your investor list and bank statement.</p>
           <p className="hint">Your deal data never left this browser.</p>
           <div className="tour-actions">
             <button type="button" className="primary" ref={primary} onClick={onCancel}>

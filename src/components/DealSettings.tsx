@@ -2,14 +2,29 @@
 import { useEffect, useId, useRef, useState, type Dispatch } from 'react'
 import { CURRENCIES, SYMBOL, type Currency } from '../lib/money'
 import { HOLDING_STRUCTURE } from '../lib/deal'
-import type { Action, DealText } from '../state'
+import { parseInitials } from '../lib/activity'
+import { CURRENCY_LOCKED_TEXT, type Action, type DealText } from '../state'
 import { Cell, Term } from './common'
 
-/** `amounts`: how many amounts a change of currency would relabel (R-DEAL-01, v0.7.5). */
-export function DealSettings({ deal, dispatch, amounts }: { deal: DealText; dispatch: Dispatch<Action>; amounts: number }) {
+/**
+ * `amounts`: how many amounts a change of currency would relabel (R-DEAL-01, v0.7.5). `currencyLocked`: a fee payer change
+ * is active, so the currency waits until it is reversed (R-DEAL-01 v0.8.1, decision 12).
+ */
+export function DealSettings({
+  deal,
+  dispatch,
+  amounts,
+  currencyLocked = false,
+}: {
+  deal: DealText
+  dispatch: Dispatch<Action>
+  amounts: number
+  currencyLocked?: boolean
+}) {
   const set = (patch: Partial<DealText>) => dispatch({ type: 'setDeal', patch })
   // nothing is converted: with amounts on the page, a new currency is confirmed first (decision 10)
   const [askCurrency, setAskCurrency] = useState<Currency | null>(null)
+  const lockId = useId()
   // focus goes to Cancel when the confirmation opens and back to the select when it closes (Codex UI polish #3)
   const currencySelect = useRef<HTMLSelectElement>(null)
   const cancelCurrency = useRef<HTMLButtonElement>(null)
@@ -20,6 +35,8 @@ export function DealSettings({ deal, dispatch, amounts }: { deal: DealText; disp
     askWasOpen.current = askCurrency !== null
   }, [askCurrency])
   const ccyId = useId()
+  const initialsId = useId()
+  const initialsBad = parseInitials(deal.initials) === null
   const chooseCurrency = (c: Currency) => {
     if (c === deal.currency) return setAskCurrency(null)
     if (amounts > 0) return setAskCurrency(c)
@@ -40,11 +57,24 @@ export function DealSettings({ deal, dispatch, amounts }: { deal: DealText; disp
         </label>
         <label>
           Currency
-          <select className="field" ref={currencySelect} value={deal.currency} onChange={(e) => chooseCurrency(e.target.value as Currency)}>
+          <select
+            className="field"
+            ref={currencySelect}
+            value={deal.currency}
+            aria-label="Currency"
+            disabled={currencyLocked}
+            aria-describedby={currencyLocked ? lockId : undefined}
+            onChange={(e) => chooseCurrency(e.target.value as Currency)}
+          >
             {CURRENCIES.map((c) => (
               <option key={c}>{c}</option>
             ))}
           </select>
+          {currencyLocked && (
+            <span className="hint" id={lockId} data-testid="currency-locked">
+              {CURRENCY_LOCKED_TEXT}
+            </span>
+          )}
         </label>
         <label>
           As-of date (YYYY-MM-DD or DD/MM/YYYY)
@@ -59,6 +89,21 @@ export function DealSettings({ deal, dispatch, amounts }: { deal: DealText; disp
         <label>
           Flag unmatched receipts after (days)
           <Cell className="field" label="Flag unmatched receipts after (days)" value={deal.agedThresholdDays} onCommit={(v) => set({ agedThresholdDays: v })} />
+        </label>
+        <label>
+          Your initials (optional, added to each Activity log entry)
+          <Cell
+            className="field"
+            label="Your initials"
+            describedBy={initialsBad ? initialsId : undefined}
+            value={deal.initials}
+            onCommit={(v) => set({ initials: v })}
+          />
+          {initialsBad && (
+            <span id={initialsId} className="warn-text">
+              Up to 10 letters, digits, spaces, dots or hyphens. Entries are recorded without initials until this is fixed.
+            </span>
+          )}
         </label>
       </div>
       <p className="hint">Currency: amounts are not converted. Changing it only changes what they are in.</p>

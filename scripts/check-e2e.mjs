@@ -2,7 +2,7 @@
 // Untagged cases are due from M2, when Playwright was introduced. Reads the Playwright JSON report.
 import { readFileSync } from 'node:fs'
 
-const order = ['M1', 'M2', 'M3', 'M4']
+const order = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6']
 const current = readFileSync('docs/milestone.txt', 'utf8').trim()
 const plan = readFileSync('docs/04_TEST_PLAN.md', 'utf8')
 const report = JSON.parse(readFileSync(process.argv[2] ?? 'e2e-report.json', 'utf8'))

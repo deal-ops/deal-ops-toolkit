@@ -1,6 +1,6 @@
 # Review summary
 
-How each stage of Deal Ops Toolkit was reviewed before it was accepted, written on 2026-10-20 at release v1.0.0, updated on 2026-10-21 at release v1.1.0 and on 2026-10-26 for release v1.1.1. The raw review output and the item-by-item triage notes stay in the private development repository; this summary replaces them in the public one.
+How each stage of Deal Ops Toolkit was reviewed before it was accepted, written on 2026-10-20 at release v1.0.0, updated on 2026-10-21 at release v1.1.0, on 2026-10-26 for release v1.1.1, on 2026-10-27 for release v1.2.0 and on 2026-10-28 for release v1.2.1. The raw review output and the item-by-item triage notes stay in the private development repository; this summary replaces them in the public one.
 
 ## How a review works
 
@@ -22,9 +22,13 @@ How each stage of Deal Ops Toolkit was reviewed before it was accepted, written 
 | G3 release fixes | 1 | READY AFTER FIXES | 1 |
 | Post-release improvements (v1.1.0) | 1 | READY AFTER FIXES | 1 |
 | Save-failure message fix (v1.1.1) | 1 | READY | 1 |
-| **Total** | **24** | | |
+| v0.8 requirements: chase and query messages, activity log, withdrawal, fee payer change | 3 | READY AFTER FIXES ×3 | 1 |
+| M5 chase and query messages, activity log (v1.2.0) | 5 | READY AFTER FIXES ×5 | 1 |
+| M6 withdrawal before closing, changing who pays a fee (v1.2.0) | 10 | READY AFTER FIXES ×9, READY | 2 (in parallel, half the checklist each) |
+| Generic wording of the chase message (v1.2.1) | 1 | READY AFTER FIXES | 1 |
+| **Total** | **43** | | |
 
-One further M4 Codex run stopped at the review service's usage limit without output. It is not counted; the review was run again.
+One further M4 Codex run stopped at the review service's usage limit without output. It is not counted; the review was run again. In M5, while Codex was at its usage limit, a fresh-context reviewer agent ran round 5 as a stopgap; Codex then re-ran round 5 and only that run is counted.
 
 ## What the reviews found and what changed
 
@@ -44,6 +48,12 @@ One further M4 Codex run stopped at the review service's usage limit without out
 
 **Save-failure message fix, v1.1.1 (1 round).** While preparing the next version, the save message was found to name the wrong cause: a full browser store said "storage is blocked", and a browser that refused storage outright showed nothing. The fix tells the two apart and puts the message where screen readers announce it. The self-test reviewer found the silent case (storage refused as soon as it is read) and the missing announcement; Codex returned READY and suggested three more tests, which were added.
 
+**v0.8 requirements (3 rounds).** Two areas, chasing payments and changes before closing, led to four additions that need no operator-held data: copy-only chase and payment-query messages, a local activity log, withdrawal before closing, and changing who pays a percentage fee before closing. Three research agents first looked at how SPV platforms, payment and accounting software and UK client-money rules handle these, and the owner chose from the recommendations: a fee payer change is an adjustment that leaves the original cash due untouched and can be reversed in one step, and the log holds 5,000 entries, asking for an export from 80%. A fresh-context review found 14 items and three Codex rounds 10, 7 and 2, all fixed in the documents before the build; the independent oracle was extended from the new wording only.
+
+**M5 chase and query messages, activity log (5 rounds).** None was a calculation error; all were about the activity log staying true to what happened, mostly with damaged saves or overlapping timing. Examples: one empty log entry made the whole deal unreadable on reload; a copy finishing after "Clear all data" wrote a name back into the log; a quote in a transaction ID crashed the page; trimming the log when storage was full lost newer entries. In round 4 three patches were replaced by simpler designs instead of being patched again. Each has a regression test and a mutant.
+
+**M6 withdrawal before closing, changing who pays a fee (10 rounds).** The major findings were of one kind: a consent, adjustment, withdrawal mark or refund staying attached after the person or fee it was given for had changed — for example a ticked consent carrying over to a different person imported under the same ID, or a settings re-check skipping an investor who was withdrawn and reinstated. The early self-test did not look for that kind on purpose, so Codex found them one by one; in round 6 every path of the kind was fixed at its cause (duplicate IDs void, the same checks run when a save is loaded, and a second check at calculation time). Round 10 returned READY. While building, the owner made decision 12: the deal currency is locked while a fee payer change is active. Every finding has a test and a mutant.
+
 ## Counts at release
 
 From the release commit on 2026-10-20: 271 unit tests pass; all 143 test-plan cases due at release ran and passed (the other 5 IDs were removed in PRD v0.7); 22 end-to-end tests pass, covering all 9 planned end-to-end cases; 107 of 107 deliberate breakages are caught; the Python oracle passes its own 139 checks and agrees with the app field by field on the hand-calculated cases and on 1,100 generated cases.
@@ -51,3 +61,7 @@ From the release commit on 2026-10-20: 271 unit tests pass; all 143 test-plan ca
 From `main` on 2026-10-21, released as v1.1.0: 284 unit tests pass; all 149 test-plan cases due ran and passed; 27 end-to-end tests pass, covering all 9 planned end-to-end cases; 131 of 131 deliberate breakages are caught; the oracle's self-check passes 139 of 139.
 
 From `main` on 2026-10-23, released as v1.1.1: 287 unit tests pass; all 150 test-plan cases due ran and passed; 27 end-to-end tests pass, covering all 9 planned end-to-end cases; 141 of 141 deliberate breakages are caught; the oracle's self-check passes 139 of 139.
+
+From `main` on 2026-10-27, released as v1.2.0: 420 unit tests pass; all 199 test-plan cases due ran and passed; 31 end-to-end tests pass, covering all 11 planned end-to-end cases; 265 of 265 deliberate breakages are caught (one equivalent mutant on redundant code; the code was removed and the mutant pointed at the check that matters); the oracle's self-check passes 178 of 178 and it agrees with the app on the hand-calculated cases and on 1,800 generated cases.
+
+From `main` on 2026-10-28, released as v1.2.1: the same counts, with 267 of 267 deliberate breakages caught (two added for the new wording).

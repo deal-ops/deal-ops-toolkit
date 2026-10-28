@@ -66,7 +66,7 @@ describe('state: sample and hand-off', () => {
       companyFees: 150_000,
       wire: 9_889_500,
     })
-    expect(s.allocation.excess).toEqual([{ id: 'c08', name: 'Hugo Bernard', amount: 500_000, needsCheck: false }])
+    expect(s.allocation.excess).toEqual([{ id: 'c08', name: 'Hugo Bernard', amount: 500_000, reason: 'Over-paid', needsCheck: false }])
   })
 
   it('R-X-07 a change upstream marks the allocation out of date; handing off again replaces it whole', () => {
@@ -218,7 +218,7 @@ describe('self-test review fixes', () => {
     const s = handedOff(reviewed())
     const hugo = s.allocation.investors.findIndex((v) => v.id === 'c08')
     expect(run(s, { type: 'editInvestor', index: hugo, field: 'name', value: 'Hugo Bernard Jr' }).allocation.excess).toEqual([
-      { id: 'c08', name: 'Hugo Bernard Jr', amount: 500_000, needsCheck: false },
+      { id: 'c08', name: 'Hugo Bernard Jr', amount: 500_000, reason: 'Over-paid', needsCheck: false },
     ])
     expect(run(s, { type: 'editInvestor', index: hugo, field: 'scheme', value: 'EIS' }).allocation.excess).toEqual(s.allocation.excess)
     expect(run(s, { type: 'editInvestor', index: 0, field: 'received', value: '1' }).allocation.excess).toEqual(s.allocation.excess)
@@ -232,7 +232,7 @@ describe('self-test review fixes', () => {
       run(s, { type: 'editInvestor', index: hugo, field: 'id', value: 'h1' }),
       run(s, { type: 'deleteInvestor', index: hugo }),
     ]) {
-      expect(edited.allocation.excess).toEqual([{ id: 'c08', name: 'Hugo Bernard', amount: 500_000, needsCheck: true }])
+      expect(edited.allocation.excess).toEqual([{ id: 'c08', name: 'Hugo Bernard', amount: 500_000, reason: 'Over-paid', needsCheck: true }])
       expect(run(edited, { type: 'keepRefund', id: 'c08' }).allocation.excess[0].needsCheck).toBe(false)
       expect(run(edited, { type: 'removeRefund', id: 'c08' }).allocation.excess).toEqual([])
     }
@@ -381,7 +381,7 @@ describe('local saving (Tech Design §1)', () => {
     const store = new Map<string, string>()
     const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) }
     const s = reviewed()
-    expect(saveState(storage, s)).toBe('saved')
+    expect(saveState(storage, s).result).toBe('saved')
     expect([...store.keys()]).toEqual([STORAGE_KEY])
     expect(loadState(storage)).toEqual(JSON.parse(JSON.stringify(s)))
   })
@@ -396,7 +396,7 @@ describe('local saving (Tech Design §1)', () => {
       },
     }
     expect(loadState(throwing)).toBeNull()
-    expect(saveState(throwing, initialState())).toBe('blocked')
+    expect(saveState(throwing, initialState()).result).toBe('blocked')
     expect(loadState(undefined)).toBeNull()
   })
 
@@ -407,8 +407,8 @@ describe('local saving (Tech Design §1)', () => {
       },
     })
     const ok = { setItem: () => undefined }
-    expect(saveState(ok, initialState())).toBe('saved')
-    expect(saveState(undefined, initialState())).toBe('blocked') // the browser gave no storage at all
+    expect(saveState(ok, initialState()).result).toBe('saved')
+    expect(saveState(undefined, initialState()).result).toBe('blocked') // the browser gave no storage at all
     for (const e of [
       new DOMException('quota', 'QuotaExceededError'),
       { name: 'QuotaExceededError' }, // newer engines may drop the legacy code
@@ -416,7 +416,7 @@ describe('local saving (Tech Design §1)', () => {
       { name: 'Error', code: 22 },
       { code: 1014 },
     ])
-      expect(saveState(failing(e), initialState())).toBe('full')
+      expect(saveState(failing(e), initialState()).result).toBe('full')
     for (const e of [
       new DOMException('insecure', 'SecurityError'),
       new Error('QuotaExceededError'),
@@ -427,14 +427,14 @@ describe('local saving (Tech Design §1)', () => {
       { code: '22' },
       { name: 'quotaexceedederror' },
     ])
-      expect(saveState(failing(e), initialState())).toBe('blocked')
+      expect(saveState(failing(e), initialState()).result).toBe('blocked')
   })
 
   it('damaged or foreign saved data is ignored, not trusted', () => {
     const good = JSON.parse(JSON.stringify(reviewed()))
     expect(parseSaved('{')).toBeNull()
     expect(parseSaved('null')).toBeNull()
-    expect(parseSaved(JSON.stringify({ ...good, schema: 2 }))).toBeNull()
+    expect(parseSaved(JSON.stringify({ ...good, schema: 3 }))).toBeNull()
     expect(parseSaved(JSON.stringify({ ...good, commitments: [{ id: 1 }] }))).toBeNull()
     expect(parseSaved(JSON.stringify({ ...good, bank: [{ ...good.bank[0], txnId: 5 }] }))).toBeNull()
     expect(parseSaved(JSON.stringify({ ...good, decisions: { t03: { kind: 'assign' } } }))).toBeNull()

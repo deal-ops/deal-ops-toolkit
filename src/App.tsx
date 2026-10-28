@@ -5,26 +5,55 @@ import { allocate } from './lib/allocation'
 import { distribute } from './lib/waterfall'
 import { holdingsFromAllocation } from './lib/snapshot'
 import { blocked } from './lib/outcome'
-import { allocationStale, amountsEntered, exitStale, clearSaved, initialState, loadState, reducer, saveState, type AppState, type SaveResult } from './state'
-import { deriveAllocation, deriveDistribution, deriveReconcile } from './derive'
+import {
+  allocationStale,
+  amountsEntered,
+  currencyLocked,
+  trimAction,
+  exitStale,
+  clearSaved,
+  initialState,
+  loadState,
+  reducer,
+  saveState,
+  type AppState,
+  type SaveResult,
+} from './state'
+import { deriveAllocation, deriveChangeRecheck, deriveDistribution, deriveReconcile } from './derive'
 import { DealSettings } from './components/DealSettings'
 import { Reconciliation } from './components/Reconciliation'
 import { Allocation } from './components/Allocation'
 import { Distribution } from './components/Distribution'
 import { Footer } from './components/Footer'
+import { ActivityLog } from './components/ActivityLog'
+import { logStatus, NEAR_FULL_TEXT, removedText } from './lib/activity'
 import { PendingContext } from './components/pending'
 import { DISCLAIMER_TEXT, PRIVACY_TEXT } from './config'
 import { TourCard, TourNote } from './components/Tour'
-import { DEMO_CAP_TEXT, STEPS, context, firstStepOf, nothingToLose, prerequisitesMet, stateAt, tourIntact, type Chapter } from './tour/script'
+import { byTour } from './tour/anchor'
+import {
+  DEMO_CAP_TEXT,
+  STEPS,
+  context,
+  firstStepOf,
+  nothingToLose,
+  prerequisitesMet,
+  stateAt,
+  tourIntact,
+  tryNext,
+  type Chapter,
+  type TryNext,
+} from './tour/script'
 import { loadTourProgress, saveTourProgress, type TourProgress } from './tour/progress'
 import { applyTheme, loadTheme, saveTheme, type Theme } from './theme'
 
-type Tab = 'deal' | 'rec' | 'alloc' | 'exit'
+type Tab = 'deal' | 'rec' | 'alloc' | 'exit' | 'log'
 const TAB_LABEL: Record<Tab, string> = {
   deal: 'Deal settings',
   rec: 'Reconciliation',
   alloc: 'Allocation',
   exit: 'Exit distribution',
+  log: 'Activity log',
 }
 
 const THEMES: [Theme, string][] = [
@@ -68,12 +97,30 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
       skipSave.current = false
       return
     }
-    setSaveResult(saveState(storage, state))
+    const saved = saveState(storage, state)
+    setSaveResult(saved.result)
+    // the save had to drop the oldest log entries to fit: keep the log in memory the same as the one saved (R-X-08.5)
+    const trim = trimAction(state.log, saved.log)
+    if (trim) dispatch(trim)
   }, [state, storage])
+  const logInfo = logStatus(state.log)
+  // the data generation a finished copy is checked against: a clear, a tour replay or a replaced list changes it (Codex M5 r4 #2)
+  const copyGate = useRef('')
+  useEffect(() => {
+    copyGate.current = `${generation}:${state.tables.commitments}:${state.tables.bank}`
+  }, [generation, state.tables])
 
-  const { deal, commitments, bank, decisions, allocation, exit } = state
+  const { deal, commitments, bank, decisions, allocation, exit, withdrawals, feePayerChanges } = state
   // re-derive only when that module's inputs change (state.ts replaces what it edits)
-  const recDerived = useMemo(() => deriveReconcile({ deal, commitments, bank, decisions }), [deal, commitments, bank, decisions])
+  const recDerived = useMemo(
+    () => deriveReconcile({ deal, commitments, bank, decisions, withdrawals, feePayerChanges }),
+    [deal, commitments, bank, decisions, withdrawals, feePayerChanges],
+  )
+  // C-ALL-11: the active fee payer change and, when the settings changed since, its re-check
+  const recheck = useMemo(
+    () => deriveChangeRecheck({ deal, commitments, allocation, withdrawals, feePayerChanges }),
+    [deal, commitments, allocation, withdrawals, feePayerChanges],
+  )
   const recOutcome = useMemo(() => (recDerived.input ? reconcile(recDerived.input) : null), [recDerived])
   const allocDerived = useMemo(() => deriveAllocation({ deal, allocation }), [deal, allocation])
   const allocOutcome = useMemo(() => (allocDerived.input ? allocate(allocDerived.input) : null), [allocDerived])
@@ -229,6 +276,44 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
     else setTourNote({ kind: 'jump', step: n })
   }
 
+  /** End card "Try next": open the page and focus the control — never act on it (guide v0.3 §3.2). The card stays open. */
+  const focusTarget = useRef<string | null>(null)
+  const [focusTick, setFocusTick] = useState(0)
+  const [endTop, setEndTop] = useState(false)
+  const takeMeTo = (t: TryNext) => {
+    focusTarget.current = t.target
+    setTab(t.tab)
+    setFocusTick((n) => n + 1) // after the page has rendered, even when it is the page already open
+  }
+  useEffect(() => {
+    const target = focusTarget.current
+    if (!target) return
+    focusTarget.current = null
+    const el = byTour(target)
+    // a disabled control cannot take focus: then the target itself, when it is made focusable (tabindex -1), e.g. the
+    // reason a panel is unavailable (Codex M6 r2 #1)
+    const focusable = el?.matches('button, input, select, a')
+      ? el
+      : (el?.querySelector<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), a') ?? (el?.hasAttribute('tabindex') ? el : null))
+    // immediate, as for the step cards, so the card's position is decided on where the target really ends up
+    el?.scrollIntoView?.({ block: 'center', behavior: 'auto' })
+    focusable?.focus({ preventScroll: true })
+    // the end card moves to the top when it would cover the target (guide v0.3 §3.2, the step cards' rule; Codex M6 r2)
+    const c = document.querySelector('[data-testid="tour-end"]')?.getBoundingClientRect()
+    const t = (focusable ?? el)?.getBoundingClientRect()
+    if (!c || !t) return
+    const W = window.innerWidth
+    const H = window.innerHeight
+    const across = t.left < W - 16 && t.right > W - 16 - c.width
+    const underBottom = across && t.bottom > H - 16 - c.height && t.top < H - 16
+    const underTop = across && t.top < 16 + c.height && t.bottom > 16
+    if (underBottom && underTop) {
+      const lift = t.bottom - (H - 32 - c.height)
+      window.scrollBy?.(0, t.top - lift >= 8 ? lift : t.top - 16)
+      setEndTop(false)
+    } else setEndTop(underBottom)
+  }, [focusTick])
+
   const clearAll = () => {
     clearSaved(storage)
     skipSave.current = true
@@ -271,6 +356,9 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
           <TabButton id="exit" tab={tab} setTab={setTab}>
             3. Exit distribution
             {holdingsStale && <span className="pill warn">out of date</span>}
+          </TabButton>
+          <TabButton id="log" tab={tab} setTab={setTab}>
+            Activity log
           </TabButton>
         </nav>
         <div className="side-actions">
@@ -319,7 +407,7 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
           </div>
           {tourClosed && savedStep !== null && <p className="privacy">Tour paused. Pick it up any time with Resume tour.</p>}
           <p className="privacy">{PRIVACY_TEXT}</p>
-          <div role="status" className="save-status">
+          <div role="status" aria-label="Save status" className="save-status">
             {saveResult === 'blocked' && (
               <p className="privacy">This browser is not saving your data (storage is blocked), so it will be gone when you close the page.</p>
             )}
@@ -327,6 +415,21 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
               <p className="privacy">
                 This browser's storage for this page is full, so your latest changes are not being saved. Export what you need before you close the page.
               </p>
+            )}
+          </div>
+          {/* R-X-08.4: never blocks anything; a removal before export is the louder of the two. A live region, since a
+              full store can remove entries at any moment (M5 self-test) */}
+          <div role="status" aria-label="Activity log status">
+            {logInfo.removedUnexported > 0 ? (
+              <p className="notice bad" data-testid="log-removed">
+                {removedText(logInfo.removedUnexported)}
+              </p>
+            ) : (
+              logInfo.nearFull && (
+                <p className="notice warn" data-testid="log-near-full">
+                  {NEAR_FULL_TEXT}
+                </p>
+              )
             )}
           </div>
         </header>
@@ -359,7 +462,7 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
 
         <PendingContext value={reportPending}>
           <main key={generation}>
-            {tab === 'deal' && <DealSettings deal={deal} dispatch={dispatch} amounts={amountsEntered(state)} />}
+            {tab === 'deal' && <DealSettings deal={deal} dispatch={dispatch} amounts={amountsEntered(state)} currencyLocked={currencyLocked(state)} />}
             {tab === 'rec' && (
               <Reconciliation
                 state={state}
@@ -369,6 +472,8 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
                 onHandoff={onHandoff}
                 pending={pending}
                 onStartTour={startTour}
+                copyGate={copyGate}
+                recheck={recheck}
               />
             )}
             {tab === 'alloc' && (
@@ -384,8 +489,10 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
                 onHandoff={onHandoff}
                 canHandoffToExit={holdings !== null}
                 onHandoffToExit={onHandoffToExit}
+                recheck={recheck}
               />
             )}
+            {tab === 'log' && <ActivityLog log={state.log} dispatch={dispatch} currency={deal.currency} />}
             {tab === 'exit' && (
               <Distribution
                 state={state}
@@ -440,6 +547,9 @@ export default function App({ storage = browserStorage() }: { storage?: Storage 
             setTourNote(null)
             setConfirmClear(true)
           }}
+          tryNext={tourNote.kind === 'end' ? tryNext(context(state)) : []}
+          top={tourNote.kind === 'end' && endTop}
+          onTakeMeTo={takeMeTo}
         />
       )}
     </div>
