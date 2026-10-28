@@ -758,8 +758,8 @@ function WithdrawForm({
   }
   // opened from the far right of a wide table on a phone, the form starts at the left: bring it into view, ready to tick
   useEffect(() => {
-    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    box.current?.scrollIntoView?.({ block: 'nearest', inline: 'start', behavior: still ? 'auto' : 'smooth' })
+    // at once, not smoothly: the consent box is ready to tick as soon as the form opens
+    box.current?.scrollIntoView?.({ block: 'nearest', inline: 'start' })
     box.current?.focus({ preventScroll: true })
   }, [])
   return (

@@ -545,7 +545,7 @@ const MUTANTS = [
     'Try next points at a line with no Undo',
   ],
   ['src/components/CopyMessage.tsx', '      state.report(true)\n', '', 'manual copy not logged'],
-  ['src/components/CopyMessage.tsx', '      box.current.focus()\n', '', 'manual-copy text not focused'],
+  ['src/components/CopyMessage.tsx', '      box.current.focus({ preventScroll: true })\n', '', 'manual-copy text not focused'],
   [
     'src/components/Reconciliation.tsx',
     "{(c.status === 'partial' || c.status === 'outstanding') && (",

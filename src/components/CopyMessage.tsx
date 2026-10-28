@@ -29,7 +29,9 @@ export function CopyMessage({
     // focused and selected, so the next keystroke copies it; the manual-copy entry is written for exactly the text that
     // was shown and selected, once (Codex M5 r4 #3)
     if (state?.kind === 'manual' && box.current && reported.current !== state) {
-      box.current.focus()
+      // inside a wide table on a phone the box can start off-screen: bring the whole box into view first
+      box.current.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+      box.current.focus({ preventScroll: true })
       box.current.select()
       reported.current = state
       state.report(true)

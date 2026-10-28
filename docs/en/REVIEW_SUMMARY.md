@@ -1,6 +1,6 @@
 # Review summary
 
-How each stage of Deal Ops Toolkit was reviewed before it was accepted, written on 2026-10-20 at release v1.0.0, updated on 2026-10-21 at release v1.1.0, on 2026-10-26 for release v1.1.1, on 2026-10-27 for release v1.2.0 and on 2026-10-28 for release v1.2.1. The raw review output and the item-by-item triage notes stay in the private development repository; this summary replaces them in the public one.
+How each stage of Deal Ops Toolkit was reviewed before it was accepted, written on 2026-10-20 at release v1.0.0, updated on 2026-10-21 at release v1.1.0, on 2026-10-26 for release v1.1.1, on 2026-10-27 for release v1.2.0, on 2026-10-28 for release v1.2.1 and for release v1.2.2. The raw review output and the item-by-item triage notes stay in the private development repository; this summary replaces them in the public one.
 
 ## How a review works
 
@@ -26,7 +26,8 @@ How each stage of Deal Ops Toolkit was reviewed before it was accepted, written 
 | M5 chase and query messages, activity log (v1.2.0) | 5 | READY AFTER FIXES ×5 | 1 |
 | M6 withdrawal before closing, changing who pays a fee (v1.2.0) | 10 | READY AFTER FIXES ×9, READY | 2 (in parallel, half the checklist each) |
 | Generic wording of the chase message (v1.2.1) | 1 | READY AFTER FIXES | 1 |
-| **Total** | **43** | | |
+| Phone-width copy box and withdraw form (v1.2.2) | 2 | READY AFTER FIXES, READY | 1 |
+| **Total** | **45** | | |
 
 One further M4 Codex run stopped at the review service's usage limit without output. It is not counted; the review was run again. In M5, while Codex was at its usage limit, a fresh-context reviewer agent ran round 5 as a stopgap; Codex then re-ran round 5 and only that run is counted.
 
@@ -65,3 +66,5 @@ From `main` on 2026-10-23, released as v1.1.1: 287 unit tests pass; all 150 test
 From `main` on 2026-10-27, released as v1.2.0: 420 unit tests pass; all 199 test-plan cases due ran and passed; 31 end-to-end tests pass, covering all 11 planned end-to-end cases; 265 of 265 deliberate breakages are caught (one equivalent mutant on redundant code; the code was removed and the mutant pointed at the check that matters); the oracle's self-check passes 178 of 178 and it agrees with the app on the hand-calculated cases and on 1,800 generated cases.
 
 From `main` on 2026-10-28, released as v1.2.1: the same counts, with 267 of 267 deliberate breakages caught (two added for the new wording).
+
+Released as v1.2.2 on 2026-10-28: 32 end-to-end tests (a new one at phone width); the deliberate breakages of the changed files 18 of 18 caught; the full run was skipped at the owner's choice, as no calculation code changed.

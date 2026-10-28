@@ -1300,7 +1300,7 @@ tr.tour-target > td:first-child {
 .copy-box {
   display: block;
   width: 100%;
-  min-width: 260px;
+  min-width: min(260px, calc(100vw - 72px));
   margin-top: 6px;
   font: inherit;
   font-size: 13px;
@@ -1336,7 +1336,10 @@ tr.tour-target > td:first-child {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-width: 520px;
+  max-width: min(520px, calc(100vw - 72px));
+}
+.withdraw-form input[type='checkbox'] {
+  scroll-margin-inline: 16px;
 }
 .withdraw-form > label:not(.check) {
   display: flex;

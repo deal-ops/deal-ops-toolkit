@@ -8,7 +8,7 @@ A browser tool for SPV deal operations. It takes one deal through three steps:
 
 Every figure is checked automatically, and the exit waterfall is explained step by step. Around these steps: chase and payment-query texts you copy and send yourself, an activity log of every decision, withdrawal before closing, and changing who pays a percentage fee before closing (recorded as a reversible adjustment). Deal data is processed and saved in your browser; the app sends none of it anywhere.
 
-**Live:** https://deal-ops-toolkit.vercel.app (release `v1.2.1`)
+**Live:** https://deal-ops-toolkit.vercel.app (release `v1.2.2`)
 
 ## Try it
 
@@ -26,7 +26,7 @@ Every figure is checked automatically, and the exit waterfall is explained step 
 - **Every planned test runs.** `npm run coverage:check` fails unless every test-plan case due at the current milestone ran and passed.
 - **Mutation testing.** `npm run mutation` deliberately breaks the code in 267 places; each one must be caught by a test.
 
-Counts at release v1.2.1 (2026-10-28): 420 unit tests, 199 of 199 due test-plan cases, 31 end-to-end tests covering 11 of 11 planned end-to-end cases, 267 of 267 mutants caught.
+Counts at release v1.2.2 (2026-10-28): 420 unit tests, 199 of 199 due test-plan cases, 32 end-to-end tests covering 11 of 11 planned end-to-end cases, 267 of 267 mutants caught.
 
 ## How it was built
 
@@ -49,7 +49,7 @@ Deal data stays in the browser (memory and local storage) and is never put in a 
 
 ## Documents
 
-English snapshots of the project documents, taken at release v1.0.0 and updated at v1.1.0, v1.1.1, v1.2.0 and v1.2.1. The Chinese originals are the source of truth and are kept in the development repository; the Chinese test plan is included because the coverage scripts read it.
+English snapshots of the project documents, taken at release v1.0.0 and updated at v1.1.0, v1.1.1, v1.2.0, v1.2.1 and v1.2.2. The Chinese originals are the source of truth and are kept in the development repository; the Chinese test plan is included because the coverage scripts read it.
 
 - [Requirements (PRD)](docs/en/01_PRD.md)
 - [Technical design](docs/en/02_TECH_DESIGN.md)

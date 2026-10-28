@@ -77,3 +77,26 @@ test('E2E-09 withdraw Lucas, move the platform fee to the company at a £970 min
   await expect(page.getByLabel('Fee 1 paid by')).toHaveValue('investors')
   expect(problems).toEqual([])
 })
+
+test('E2E-09 375px: the manual-copy box and the withdraw form open wholly in view, at once', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 740 })
+  await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', { value: undefined }))
+  await start(page)
+  const inView = async (name: string, el: ReturnType<typeof page.getByRole>) => {
+    const b = (await el.boundingBox())!
+    expect([name, b.x >= 0, b.x + b.width <= 375, b.y >= 0, b.y + b.height <= 740]).toEqual([name, true, true, true, true])
+  }
+
+  await page.getByRole('button', { name: 'Copy message for David Kim' }).click()
+  const box = page.getByRole('textbox', { name: 'David Kim: text to copy' })
+  await expect(box).toBeFocused()
+  await inView('manual-copy box', box)
+
+  await page.getByRole('button', { name: 'Mark Lucas Meyer withdrawn' }).click()
+  const consent = page.getByLabel('Written consent from the investor received')
+  await expect(consent).toBeFocused()
+  // no smooth scroll to wait for: the whole form, its consent box and its buttons are on screen at once (Codex 375px #1)
+  await inView('withdraw form', page.getByRole('group', { name: 'Withdraw Lucas Meyer' }))
+  await inView('consent box', consent)
+  await inView('confirm button', page.getByRole('button', { name: 'Confirm withdrawal' }))
+})

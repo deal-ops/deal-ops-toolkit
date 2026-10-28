@@ -2,6 +2,17 @@
 
 Rule P9: only what is implemented, tested and deployed is listed. Each line names the requirement and the tests that cover it.
 
+## v1.2.2 — released 2026-10-28
+
+Live at https://deal-ops-toolkit.vercel.app (build `index-tN1Qq31h.js`). The tag `v1.2.2` and the release commit `b5bf8f1` are in the private development repository. Production smoke test on 2026-10-28: the sample deal's figures match Test Plan §3; at phone width the copy box and the withdraw form open wholly on screen; 12 requests, all same-origin GETs without bodies or query strings; no console errors; the security headers match `vercel.json` (Tech Design §4).
+
+A small fix for phone-width screens (PR #34 in the private development repository). No calculation, money decision, export column or saved-data format changed. Checked on `main` on 2026-10-28: all 199 test-plan cases due at M6 ran and passed; 11 of 11 end-to-end cases (32 tests); the deliberate code breakages in the changed files 18 of 18 caught (the full run was skipped at the owner's choice, as no calculation code changed); the Python oracle's self-check 178 of 178.
+
+**Phone-width screens** (R-X-04)
+- When the clipboard is unavailable, the chase or query text box is brought wholly on screen before it is selected; before, on a phone it could sit partly off the right edge of the investors table.
+- The withdraw form fits the screen and appears at once, with the consent box ready to tick; before, it was wider than a phone screen and scrolled into place over about half a second.
+- Test: E2E-09 (375px).
+
 ## v1.2.1 — released 2026-10-28
 
 Live at https://deal-ops-toolkit.vercel.app (build `index-bxRVcwES.js`). The tag `v1.2.1` and the release commit `e19b640` are in the private development repository. Production smoke test on 2026-10-28: the sample deal's figures match Test Plan §3; the copied chase message carries the new wording word for word; withdrawing an investor and changing then reversing who pays the platform fee work as before; 12 requests, all same-origin GETs without bodies or query strings; no console errors; the security headers match `vercel.json` (Tech Design §4).

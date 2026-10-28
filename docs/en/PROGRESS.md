@@ -1,4 +1,4 @@
-English snapshot of docs/PROGRESS.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated at v1.1.0 on 2026-10-21, for v1.1.1 on 2026-10-26 for v1.2.0 on 2026-10-27 and for v1.2.1 on 2026-10-28.
+English snapshot of docs/PROGRESS.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated at v1.1.0 on 2026-10-21, for v1.1.1 on 2026-10-26 for v1.2.0 on 2026-10-27 and for v1.2.1 and v1.2.2 on 2026-10-28.
 
 # Deal Ops Toolkit — progress record
 
@@ -21,6 +21,7 @@ This file records each stage: what was done, how it was verified, who reviewed i
 | M6 withdrawal, changing who pays a fee (PR #27) | ✅ Accepted and merged | 2026-10-26 → 10-27 |
 | G3 release v1.2.0 (M5 + M6) | ✅ Live https://deal-ops-toolkit.vercel.app | 2026-10-27 |
 | v0.8.2 generic wording in the chase message, release v1.2.1 | ✅ Live https://deal-ops-toolkit.vercel.app | 2026-10-28 |
+| Small fix: copy box and withdraw form at phone width, release v1.2.2 | ✅ Live https://deal-ops-toolkit.vercel.app | 2026-10-28 |
 
 ---
 
@@ -488,3 +489,11 @@ Every finding is fixed with a test and a mutant. The major ones are of one kind:
 **What changed:** the paragraph of the chase message (template A) for investors who have already paid now reads: "If you have already sent this payment, please ask your bank for the MT103 (or equivalent) for the transfer, showing its UETR, and send it to us so we can trace the payment." The reconciliation hint and the chasing row of the PRD §1.1 evidence table changed to match. Text only: no calculation, money decision, export format or saved data changed.
 
 **How it was checked:** full review track because it touches `src/lib/messages.ts`. 420 unit tests pass, due cases 199/199, end-to-end 31 (11/11), full mutation 267/267 (2 new); CI success. Self-test reviewer and Codex round 1 both READY AFTER FIXES; all items fixed. G3: automated checks and M-01 to M-03 and M-12 passed; after release the production smoke test and security headers passed. Rollback: v1.2.0 (same saved-data format).
+
+## Small fix: copy box and withdraw form at phone width, release v1.2.2
+
+**Status:** ✅ Live since 2026-10-28 (build `index-tN1Qq31h.js`, tag `v1.2.2`). Owner: "accept, merge, OK to release".
+
+**What changed:** at 375px, the manual-copy box shown when the clipboard is unavailable could be cut off at the right of the investors table; it is now brought wholly on screen before its text is selected. The withdraw form was wider than a phone screen and scrolled into place over about half a second; it now fits the screen and appears at once. Interface only.
+
+**How it was checked:** small-fix track. A new end-to-end test at 375px requires the copy box, the whole withdraw form and its buttons on screen; it fails on the old code. Self-test reviewer READY; Codex round 1 found the form still too wide (fixed), round 2 READY. Due cases 199/199, end-to-end 32 (11/11), mutation of the changed files 18/18; the full mutation run was skipped at the owner's choice, as no calculation code changed. Production smoke test and security headers passed, incl. the 375px check on production.
