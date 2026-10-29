@@ -79,3 +79,7 @@ npm run mutation          # mutation testing (about 10 minutes; edits source fil
 ## Fonts
 
 Inter and IBM Plex Mono, both under the SIL Open Font License 1.1, are served by the site itself. Their licences are in `public/licenses/`.
+
+## Licence
+
+Apache License 2.0 — see `LICENSE`. The fonts keep their own licence (above).
