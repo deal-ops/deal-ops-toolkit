@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Deal Ops Toolkit: SPV deal operations, to the penny</title>
+    <meta
+      name="description"
+      content="A browser tool for SPV deal operations: match bank receipts to commitments, work out the closing allocation, and split exit proceeds with carry and a hurdle. A working prototype."
+    />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="fonts/plex-mono-latin-500.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="styles.css" />
+    <!-- Site handbook §6: one self-hosted script (built from site-src/site.js by npm run site:build), loaded first so motion can hide content before the first paint. The page is complete without it. -->
+    <script src="site.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="nav" data-nav>
+      <a class="nav__brand glass" href="#top">Deal Ops Toolkit</a>
+      <nav class="nav__links glass" aria-label="Sections" data-nav-links>
+        <span class="nav__pill" aria-hidden="true" data-nav-pill></span>
+        <a href="#how">How it works</a>
+        <a href="#trust">Why trust it</a>
+        <a href="#built">How it was built</a>
+      </nav>
+      <span class="nav__end">
+        <a class="nav__cta glass" href="https://deal-ops-toolkit.vercel.app">Open the app</a>
+      </span>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <h1 class="hero__title">
+          <span class="sr-only">Reconcile, allocate and distribute an SPV to the penny.</span>
+          <span class="hero__line rot" aria-hidden="true" data-rotator data-phrases="Reconcile:an SPV|Allocate:a close|Distribute:an exit">
+            <span class="rot__item is-on"><span class="rot__verb">Reconcile</span> an SPV</span>
+          </span>
+          <span class="hero__line" aria-hidden="true">to the penny.</span>
+        </h1>
+        <p class="hero__lede">
+          A browser tool for SPV deal operations: match bank receipts to commitments, work out the closing allocation, and split exit proceeds with carry and a
+          hurdle. A working prototype.
+        </p>
+        <div class="hero__actions">
+          <a class="btn btn--primary" href="https://deal-ops-toolkit.vercel.app">Take the 3-minute tour</a>
+          <a class="btn btn--quiet" href="https://deal-ops-toolkit.vercel.app">Open the app <span class="arrow" aria-hidden="true">→</span></a>
+        </div>
+
+        <!-- Hero illustration: three panels drawn in type from the sample deal's real figures (Test Plan §3); not a screenshot -->
+        <figure class="scene" data-scene>
+          <div class="panel panel--rec" data-step="0">
+            <p class="panel__eyebrow">1 · Reconciliation</p>
+            <p class="panel__title">Bank statement</p>
+            <ul class="ledger">
+              <li>
+                <span class="ledger__who">A HART<small>NW-001</small></span
+                ><span class="ledger__amt">£10,000.00</span><span class="pill pill--ok">Matched</span>
+              </li>
+              <li>
+                <span class="ledger__who">B OKAFOR<small>NW002 NORTHWIND</small></span
+                ><span class="ledger__amt">£5,000.00</span><span class="pill pill--ok">Matched</span>
+              </li>
+              <li class="ledger__focus">
+                <span class="ledger__who">CHLOE MARTIN<small>no reference · suggested Chloe Martin, score 0.55 · confirmed by a person</small></span
+                ><span class="ledger__amt">£20,000.00</span
+                ><span class="pill pill--swap"
+                  ><span class="pill__before" aria-hidden="true">Review</span><span class="pill__after" aria-hidden="true">Confirmed</span
+                  ><span class="sr-only">Confirmed</span></span
+                >
+              </li>
+              <li>
+                <span class="ledger__who">D KIM<small>NW-004</small></span
+                ><span class="ledger__amt">£2,000.00</span><span class="pill pill--ok">Matched</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="panel panel--alloc" data-step="1">
+            <p class="panel__eyebrow">2 · Closing allocation</p>
+            <p class="panel__title">Northwind Robotics · Seed</p>
+            <ul class="roster">
+              <li><span class="ref">NW-001</span><span class="roster__name">Amelia Hart</span><span class="roster__amt">£9,700.00</span></li>
+              <li><span class="ref">NW-002</span><span class="roster__name">Ben Okafor</span><span class="roster__amt">£4,850.00</span></li>
+              <li><span class="ref">NW-003</span><span class="roster__name">Chloe Martin</span><span class="roster__amt">£19,400.00</span></li>
+              <li><span class="ref">NW-004</span><span class="roster__name">David Kim</span><span class="roster__amt">£1,940.00</span></li>
+              <li class="roster__more">and 7 more investors · £100,395.00 invested</li>
+            </ul>
+            <div class="panel__total">
+              <span class="panel__label">Wire to company</span>
+              <span class="panel__figure">£98,895.00</span>
+            </div>
+          </div>
+
+          <div class="panel panel--exit" data-step="2">
+            <p class="panel__eyebrow">3 · Exit distribution</p>
+            <p class="panel__title">£390,000 exit · 20% carry, 8% hurdle</p>
+            <p class="panel__terms">£4,500 exit costs first · 6 years · full catch-up · £385,500 to share</p>
+            <ul class="falls">
+              <li>
+                <span class="falls__row"><span>Return of capital</span><span>£100,395.00</span></span
+                ><span class="bar"><span class="bar__inv bar--capital"></span></span>
+              </li>
+              <li>
+                <span class="falls__row"><span>Preferred return</span><span>£58,919.25</span></span
+                ><span class="bar"><span class="bar__inv bar--pref"></span></span>
+              </li>
+              <li>
+                <span class="falls__row"><span>Lead catch-up</span><span>£14,729.81</span></span
+                ><span class="bar"><span class="bar__lead bar--catch"></span></span>
+              </li>
+              <li>
+                <span class="falls__row"><span>Carry split 80 / 20</span><span>£211,455.94</span></span
+                ><span class="bar"><span class="bar__inv bar--split"></span><span class="bar__lead bar--splitlead"></span></span>
+              </li>
+            </ul>
+            <div class="panel__total">
+              <span class="panel__label">Carry to the lead</span>
+              <span class="panel__figure">£57,021.00</span>
+            </div>
+          </div>
+          <figcaption class="sr-only">
+            The sample deal, Northwind Robotics, in three steps: bank receipts matched to investors (one suggested match confirmed by a person); the closing
+            allocation, £100,395.00 invested and £98,895.00 wired to the company; and a £390,000 exit, where the lead's carry comes to £57,021.00.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="steps" id="how" aria-labelledby="how-h">
+        <h2 class="sr-only" id="how-h">How it works</h2>
+        <div class="band" aria-hidden="true"></div>
+        <div class="steps__body" data-tone="dark">
+          <div class="deck" data-deck>
+            <div class="deck__stage">
+              <div class="deck__cards">
+                <article class="card" id="step-1" data-card data-tone="dark">
+                  <div class="card__text">
+                    <p class="eyebrow">Step 1 · Reconciliation</p>
+                    <h3 class="card__title">Every receipt matched, or explained</h3>
+                    <p class="card__body">
+                      Import the investor list and the bank statement. A receipt is booked automatically only when its reference contains exactly one investor's
+                      payment reference; everything else is a suggestion with a score and reasons, and a person confirms it.
+                    </p>
+                  </div>
+                  <div class="media media--peach">
+                    <div class="media__stage">
+                      <div class="media__glow" aria-hidden="true"></div>
+                      <div class="media__frame">
+                        <picture>
+                          <source srcset="media/rec-dark-focus.jpg" media="(prefers-color-scheme: dark)" />
+                          <img
+                            src="media/rec-light-focus.jpg"
+                            width="1280"
+                            height="800"
+                            loading="lazy"
+                            alt="Reconciliation after review: nothing waiting for review, and £6,340.00 of receipts not booked to any investor."
+                          />
+                        </picture>
+                        <video muted playsinline preload="none" aria-hidden="true" data-video>
+                          <source src="media/rec-dark-focus.mp4" type="video/mp4" media="(prefers-color-scheme: dark)" />
+                          <source src="media/rec-light-focus.mp4" type="video/mp4" />
+                        </video>
+                      </div>
+                    </div>
+                    <p class="media__caption">In the app: three suggested matches confirmed, and the summary updates.</p>
+                  </div>
+                </article>
+
+                <article class="card" id="step-2" data-card data-tone="dark">
+                  <div class="card__text">
+                    <p class="eyebrow">Step 2 · Closing allocation</p>
+                    <h3 class="card__title">Know what everyone invests before the wire</h3>
+                    <p class="card__body">Fees, scale-back and over-payment refunds for every investor, with a closing confirmation you can copy and check.</p>
+                  </div>
+                  <div class="media media--sage">
+                    <div class="media__stage">
+                      <div class="media__glow" aria-hidden="true"></div>
+                      <div class="media__frame">
+                        <picture>
+                          <source srcset="media/alloc-dark-focus.jpg" media="(prefers-color-scheme: dark)" />
+                          <img
+                            src="media/alloc-light-focus.jpg"
+                            width="1280"
+                            height="800"
+                            loading="lazy"
+                            alt="The per-investor allocation table: received, invested, shares, fees and refunds."
+                          />
+                        </picture>
+                        <video muted playsinline preload="none" aria-hidden="true" data-video>
+                          <source src="media/alloc-dark-focus.mp4" type="video/mp4" media="(prefers-color-scheme: dark)" />
+                          <source src="media/alloc-light-focus.mp4" type="video/mp4" />
+                        </video>
+                      </div>
+                    </div>
+                    <p class="media__caption">In the app: the closing totals, then each investor's line.</p>
+                  </div>
+                </article>
+
+                <article class="card" id="step-3" data-card data-tone="dark">
+                  <div class="card__text">
+                    <p class="eyebrow">Step 3 · Exit distribution</p>
+                    <h3 class="card__title">Carry, hurdle and catch-up, shown step by step</h3>
+                    <p class="card__body">Split exit proceeds between investors and the lead, and see how each pound got where it went.</p>
+                  </div>
+                  <div class="media media--clay">
+                    <div class="media__stage">
+                      <div class="media__glow" aria-hidden="true"></div>
+                      <div class="media__frame">
+                        <picture>
+                          <source srcset="media/exit-dark-focus.jpg" media="(prefers-color-scheme: dark)" />
+                          <img
+                            src="media/exit-light-focus.jpg"
+                            width="1280"
+                            height="800"
+                            loading="lazy"
+                            alt="The exit waterfall for £390,000 of proceeds: £57,021 of carry and £328,479 to investors."
+                          />
+                        </picture>
+                        <video muted playsinline preload="none" aria-hidden="true" data-video>
+                          <source src="media/exit-dark-focus.mp4" type="video/mp4" media="(prefers-color-scheme: dark)" />
+                          <source src="media/exit-light-focus.mp4" type="video/mp4" />
+                        </video>
+                      </div>
+                    </div>
+                    <p class="media__caption">
+                      In the app: exit proceeds changed from £250,000 to £390,000; the carry to the lead and the investors' share update.
+                    </p>
+                  </div>
+                </article>
+              </div>
+              <ol class="deck__nav" aria-label="Steps">
+                <li>
+                  <a href="#step-1" data-deck-link
+                    >Reconciliation<span class="deck__bar" aria-hidden="true"><span></span></span
+                  ></a>
+                </li>
+                <li>
+                  <a href="#step-2" data-deck-link
+                    >Allocation<span class="deck__bar" aria-hidden="true"><span></span></span
+                  ></a>
+                </li>
+                <li>
+                  <a href="#step-3" data-deck-link
+                    >Exit<span class="deck__bar" aria-hidden="true"><span></span></span
+                  ></a>
+                </li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="trust" id="trust" data-tone="dark" aria-labelledby="trust-h">
+        <div class="trust__inner">
+          <h2 class="eyebrow section-label" id="trust-h">Why trust the numbers</h2>
+          <dl class="facts">
+            <div class="fact" data-reveal>
+              <dt>Exact</dt>
+              <dd>Whole pence and integer maths, no floating point.</dd>
+            </div>
+            <div class="fact" data-reveal>
+              <dt>1,800</dt>
+              <dd>Generated cases where an independent Python implementation agrees field by field.</dd>
+            </div>
+            <div class="fact" data-reveal>
+              <dt>267 / 267</dt>
+              <dd>Deliberate code breakages caught by the tests.</dd>
+            </div>
+            <div class="fact" data-reveal>
+              <dt>199 / 199</dt>
+              <dd>Planned test cases due, all run and passing.</dd>
+            </div>
+          </dl>
+          <p class="trust__note">Figures from the v1.2.1 and v1.2.2 release checks.</p>
+        </div>
+      </section>
+      <div class="band band--up" aria-hidden="true"></div>
+
+      <section class="privacy" aria-labelledby="privacy-h">
+        <h2 class="privacy__title" id="privacy-h" data-reveal>Your deal data stays in your browser</h2>
+        <p class="privacy__body" data-reveal>
+          Your deal data is processed in your browser and never sent by this app. The hosting provider still receives normal page requests.
+        </p>
+      </section>
+
+      <section class="built" id="built" aria-labelledby="built-h">
+        <h2 class="eyebrow section-label" id="built-h">How it was built</h2>
+        <ol class="built__grid">
+          <li data-reveal>
+            <span class="built__n">01</span>
+            <h3>Requirements first</h3>
+            <p>Code is written only after the requirements are signed off.</p>
+          </li>
+          <li data-reveal>
+            <span class="built__n">02</span>
+            <h3>One pull request per milestone</h3>
+            <p>Each with automated checks and a review before it is merged.</p>
+          </li>
+          <li data-reveal>
+            <span class="built__n">03</span>
+            <h3>Self-test before review</h3>
+            <p>Rule-by-rule checks, hostile inputs, mutation testing and a fresh reviewer.</p>
+          </li>
+          <li data-reveal>
+            <span class="built__n">04</span>
+            <h3>Cross-review until clean</h3>
+            <p>43 rounds of Codex review, each until READY or READY AFTER FIXES.</p>
+          </li>
+        </ol>
+        <p class="built__close" data-reveal>The owner defines the problem, the rules and the gates; Claude Code writes the implementation.</p>
+        <p class="built__links">
+          <a href="https://github.com/yuannh/deal-ops-toolkit">GitHub <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="https://github.com/yuannh/deal-ops-toolkit/blob/main/docs/en/REVIEW_SUMMARY.md"
+            >Review summary <span class="arrow" aria-hidden="true">→</span></a
+          >
+        </p>
+      </section>
+
+      <section class="cta" aria-labelledby="cta-h">
+        <h2 class="cta__title" id="cta-h" data-reveal>Try it with the sample deal</h2>
+        <p class="cta__body" data-reveal>No sign-up, nothing to install.</p>
+        <a class="btn btn--primary" href="https://deal-ops-toolkit.vercel.app">Take the 3-minute tour</a>
+      </section>
+    </main>
+
+    <footer class="footer" data-tone="dark">
+      <p class="footer__mark" data-reveal>Deal Ops Toolkit</p>
+      <div class="footer__cols">
+        <div>
+          <h2 class="footer__h">Product</h2>
+          <ul>
+            <li><a href="https://deal-ops-toolkit.vercel.app">Open the app</a></li>
+            <li><a href="https://github.com/yuannh/deal-ops-toolkit/blob/main/docs/RELEASE_NOTES.md">Release notes</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2 class="footer__h">Code</h2>
+          <ul>
+            <li><a href="https://github.com/yuannh/deal-ops-toolkit">GitHub</a></li>
+            <li><a href="https://github.com/yuannh/deal-ops-toolkit/blob/main/docs/en/REVIEW_SUMMARY.md">Review summary</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2 class="footer__h">Contact</h2>
+          <ul>
+            <li><a href="mailto:haixiangyuann@gmail.com">Email</a></li>
+          </ul>
+        </div>
+      </div>
+      <p class="footer__legal">
+        This is not investment, tax or legal advice. Check every result yourself before you rely on it. Not affiliated with any platform.
+      </p>
+    </footer>
+  </body>
+</html>

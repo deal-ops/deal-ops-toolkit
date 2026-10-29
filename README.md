@@ -10,6 +10,8 @@ Every figure is checked automatically, and the exit waterfall is explained step 
 
 **Live:** https://deal-ops-toolkit.vercel.app (release `v1.2.2`)
 
+**Website:** https://deal-ops-toolkit-site.vercel.app (source in `site/`; handbook `docs/en/SITE_HANDBOOK.md`)
+
 ## Try it
 
 1. Open the live link and click **"I understand — take the 3-minute tour"**.

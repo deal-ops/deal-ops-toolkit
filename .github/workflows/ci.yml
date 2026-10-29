@@ -27,6 +27,8 @@ jobs:
         run: npm run coverage:check
       - name: Build
         run: npm run build
+      - name: Project website checks (CSP markup, links, app sentences, P9 figures, script build and size, clips ≤ 5 s)
+        run: npm run site:check
       - name: Let apt wait for the dpkg lock
         # the runner's own apt jobs can hold the lock at start-up ("Could not get lock /var/lib/dpkg/lock-frontend"); make every
         # apt-get call, including Playwright's, wait up to 5 minutes for it instead of failing (apt's DPkg::Lock::Timeout, 2026-10-27)

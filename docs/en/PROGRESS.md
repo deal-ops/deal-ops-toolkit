@@ -497,3 +497,15 @@ Every finding is fixed with a test and a mutant. The major ones are of one kind:
 **What changed:** at 375px, the manual-copy box shown when the clipboard is unavailable could be cut off at the right of the investors table; it is now brought wholly on screen before its text is selected. The withdraw form was wider than a phone screen and scrolled into place over about half a second; it now fits the screen and appears at once. Interface only.
 
 **How it was checked:** small-fix track. A new end-to-end test at 375px requires the copy box, the whole withdraw form and its buttons on screen; it fails on the old code. Self-test reviewer READY; Codex round 1 found the form still too wide (fixed), round 2 READY. Due cases 199/199, end-to-end 32 (11/11), mutation of the changed files 18/18; the full mutation run was skipped at the owner's choice, as no calculation code changed. Production smoke test and security headers passed, incl. the 375px check on production.
+
+## Project website
+
+**Status:** ✅ Live since 2026-10-29 · https://deal-ops-toolkit-site.vercel.app
+
+**What was done:** A one-page static website (`site/`, its own hosting project, PRD decision 13). The hero is an illustration set in type — three panels, bank statement → closing allocation → exit waterfall — with every figure from the sample deal; the three-step deck sits in a dark band, and each card plays a close-up clip recorded from the real app (each ≤ 5 s); then trust figures, privacy, how it was built and a closing call to action. No change to the app's code, tests, exports or saved data. Design, methods, decisions and lessons: `docs/en/SITE_HANDBOOK.md`.
+
+**How it was checked:** `npm run site:check` (also in CI) checks the page's CSP rules, local files and anchors, external links, the privacy and disclaimer sentences word for word against the app, the release-notes basis of the trust figures, the script build and size (1973 bytes gzip), and that all 6 clips are ≤ 5 s; breaking 4 things on purpose made it fail each time. Screenshot checks cover desktop light and dark, 1261×657, 375px and reduced motion; no sideways scroll at 320–768px on a phone.
+
+**Reviews:** A fresh-context self-test review, a design expert for the page layout (the owner chose one of three options), and Codex 3 rounds; round 3 READY AFTER FIXES with the fixes applied. Every finding was judged before any change.
+
+**Acceptance and release:** The owner accepted it on 2026-10-29 ("I accept this version") and approved going live. The app is unchanged (build `index-tN1Qq31h.js`). Production branch `release`; the live security headers match `site/vercel.json` and the smoke test passed.

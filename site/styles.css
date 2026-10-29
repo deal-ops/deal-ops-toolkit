@@ -1,0 +1,1378 @@
+/*
+ * Project website (docs/en/SITE_HANDBOOK.md). Colours are the app's own tokens (src/index.css); fonts are the app's open-licensed
+ * Inter and IBM Plex Mono, served from this site. No inline styles: the script only sets custom properties and classes.
+ * Motion (handbook §3.4): big entrances ~1s on one ease-out curve, hovers 0.2s; everything still under prefers-reduced-motion.
+ */
+@font-face {
+  font-family: 'Inter Variable';
+  src: url('fonts/inter-latin-wght.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('fonts/plex-mono-latin-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('fonts/plex-mono-latin-500.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+
+:root {
+  --bg: #f6f8f3;
+  --text: #151619;
+  --muted: #5f6359;
+  --soft: #8a8f84; /* the rotating verb: large text only (AA large) */
+  --line: #dde2d6;
+  --ink: #151619;
+  --ink-text: #f6f8f3;
+  --ink-muted: rgba(246, 248, 243, 0.72);
+  --card: #151619;
+  --card-edge: transparent;
+  --btn: #151619;
+  --btn-text: #f6f8f3;
+  --btn-hover: #2c2e33;
+  --glass: rgba(246, 248, 243, 0.64);
+  --glass-edge: rgba(255, 255, 255, 0.55);
+  --glass-shadow: 0 8px 24px rgba(20, 22, 32, 0.08);
+  --frame: #f6f8f3;
+  --peach: #eab189;
+  --sage: #b7cf9e;
+  --clay: #d98a68;
+  --sand: #e9d8a6;
+  --lilac: #b9a8d9;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --gutter: clamp(16px, 4vw, 48px);
+  --band: #151619;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161616;
+    --text: #f9fafb;
+    --muted: #a3a3a3;
+    --soft: #8c8c8c;
+    --line: #2e2e2e;
+    --card: #222326;
+    --card-edge: rgba(255, 255, 255, 0.08);
+    --btn: #eab189;
+    --btn-text: #161616;
+    --btn-hover: #f1c4a3;
+    --glass: rgba(30, 30, 30, 0.6);
+    --glass-edge: rgba(255, 255, 255, 0.08);
+    --glass-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+    --frame: #161616;
+    --band: #0b0b0c;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+  /* the full-bleed glows are 100vw wide: clipping on html itself (not only body, whose overflow passes to the viewport)
+     keeps phones from widening the layout to fit them */
+  overflow-x: clip;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 17px/1.55 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+img,
+video {
+  display: block;
+  max-width: 100%;
+}
+a {
+  color: inherit;
+}
+/* the hidden attribute wins over any display set by a class */
+[hidden] {
+  display: none !important;
+}
+/* focus rings: ink on light surfaces, light on dark ones (≥ 3:1 against both) */
+:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.skip {
+  position: fixed;
+  left: 16px;
+  top: -60px;
+  z-index: 100;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--btn);
+  color: var(--btn-text);
+  text-decoration: none;
+}
+.steps__body :focus-visible,
+.trust :focus-visible,
+.footer :focus-visible,
+.nav.is-dark :focus-visible {
+  outline-color: #f6f8f3;
+}
+.skip:focus {
+  top: 16px;
+}
+.eyebrow {
+  margin: 0 0 18px;
+  font: 500 13px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ---- buttons ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 22px;
+  border-radius: 999px;
+  font-weight: 500;
+  font-size: 15px;
+  text-decoration: none;
+  transition:
+    background-color 0.2s var(--ease),
+    color 0.2s var(--ease),
+    transform 0.2s var(--ease);
+}
+.btn:active {
+  transform: scale(0.98);
+}
+.btn--primary {
+  background: var(--btn);
+  color: var(--btn-text);
+}
+.btn--primary:hover {
+  background: var(--btn-hover);
+}
+.btn--quiet {
+  color: var(--text);
+}
+.btn--quiet:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.arrow {
+  display: inline-block;
+  transition: transform 0.2s var(--ease);
+}
+a:hover > .arrow {
+  transform: translateX(3px);
+}
+
+/* ---- navigation: a floating glass capsule; the pill follows the hovered link ---- */
+.nav {
+  position: fixed;
+  inset: 16px var(--gutter) auto;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+.nav > * {
+  pointer-events: auto;
+}
+.glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+  box-shadow:
+    var(--glass-shadow),
+    inset 0 1px 0 var(--glass-edge),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+  border-radius: 999px;
+  transition:
+    background-color 0.28s var(--ease),
+    box-shadow 0.28s var(--ease),
+    color 0.28s var(--ease);
+}
+.nav__brand,
+.nav__cta {
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 18px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+.nav__cta {
+  font-weight: 500;
+}
+.nav__end {
+  display: flex;
+  gap: 8px;
+}
+.nav__links {
+  position: relative;
+  display: flex;
+  height: 44px;
+  padding: 4px;
+}
+.nav__links a {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+.nav__pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: var(--pill-w, 0);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  opacity: 0;
+  transform: translateX(var(--pill-x, 0));
+  transition:
+    transform 0.24s var(--ease),
+    width 0.24s var(--ease),
+    opacity 0.18s var(--ease);
+}
+.nav__links.is-hover .nav__pill {
+  opacity: 1;
+}
+/* over a dark section the light glass turns dark */
+.nav.is-dark .glass {
+  --glass: rgba(21, 22, 25, 0.6);
+  --glass-edge: rgba(255, 255, 255, 0.1);
+  color: var(--ink-text);
+}
+.nav.is-dark .nav__pill {
+  background: rgba(255, 255, 255, 0.1);
+}
+@media (max-width: 760px) {
+  .nav__links {
+    display: none;
+  }
+}
+@media (max-width: 520px) {
+  .nav__cta {
+    display: none;
+  }
+}
+
+/* ---- hero ---- */
+.hero {
+  position: relative;
+  padding: clamp(128px, 18vh, 176px) var(--gutter) 0;
+  text-align: center;
+}
+.hero__title {
+  margin: 0 auto;
+  font-size: clamp(44px, 7.6vw, 100px);
+  font-weight: 500;
+  line-height: 0.97;
+  letter-spacing: -0.04em;
+  animation: focus-in 1.1s var(--ease-out) 0.05s both;
+}
+/* the longest phrase ("Distribute an exit") must fit on one line at 320px */
+@media (max-width: 380px) {
+  .hero__title {
+    font-size: clamp(34px, 10.4vw, 44px);
+  }
+}
+.hero__line {
+  display: block;
+}
+.rot {
+  position: relative;
+  height: 0.97em;
+  overflow: hidden;
+  /* a little room below for descenders */
+  padding-bottom: 0.12em;
+  box-sizing: content-box;
+}
+.rot__item {
+  position: absolute;
+  inset: 0 0 auto;
+  white-space: nowrap;
+}
+.rot__item:not(.is-on) {
+  visibility: hidden;
+}
+.rot__verb {
+  color: var(--soft);
+}
+.rot__item.is-out {
+  visibility: visible;
+  animation: fade-out 0.18s var(--ease) both;
+}
+.rot .ch {
+  display: inline-block;
+  white-space: pre;
+}
+.rot__item.is-in .ch {
+  animation: char-in 0.62s var(--ease-out) both;
+}
+/* letters arrive one after another, 30 ms apart; site.js numbers them d0–d19 across the phrase */
+.rot .d1 {
+  animation-delay: 30ms;
+}
+.rot .d2 {
+  animation-delay: 60ms;
+}
+.rot .d3 {
+  animation-delay: 90ms;
+}
+.rot .d4 {
+  animation-delay: 120ms;
+}
+.rot .d5 {
+  animation-delay: 150ms;
+}
+.rot .d6 {
+  animation-delay: 180ms;
+}
+.rot .d7 {
+  animation-delay: 210ms;
+}
+.rot .d8 {
+  animation-delay: 240ms;
+}
+.rot .d9 {
+  animation-delay: 270ms;
+}
+.rot .d10 {
+  animation-delay: 300ms;
+}
+.rot .d11 {
+  animation-delay: 330ms;
+}
+.rot .d12 {
+  animation-delay: 360ms;
+}
+.rot .d13 {
+  animation-delay: 390ms;
+}
+.rot .d14 {
+  animation-delay: 420ms;
+}
+.rot .d15 {
+  animation-delay: 450ms;
+}
+.rot .d16 {
+  animation-delay: 480ms;
+}
+.rot .d17 {
+  animation-delay: 510ms;
+}
+.rot .d18 {
+  animation-delay: 540ms;
+}
+.rot .d19 {
+  animation-delay: 570ms;
+}
+.hero__lede {
+  max-width: 600px;
+  margin: 28px auto 0;
+  color: var(--muted);
+  font-size: clamp(17px, 1.4vw, 19px);
+  animation: rise-in 0.95s var(--ease-out) 0.35s both;
+}
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 32px;
+  animation: rise-in 0.95s var(--ease-out) 0.5s both;
+}
+
+/* hero illustration: three panels set in type from the sample deal (not screenshots), over a full-bleed soft glow that
+   fades out above and below. Default styles are the final state; the entrance animations only lead up to it. */
+.scene {
+  position: relative;
+  max-width: 1120px;
+  height: 480px;
+  margin: clamp(64px, 10vh, 112px) auto 0;
+  isolation: isolate;
+  text-align: left;
+}
+.scene::before,
+.scene::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: -16%;
+  bottom: -12%;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  -webkit-mask: linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent);
+  mask: linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent);
+  pointer-events: none;
+}
+.scene::before {
+  background:
+    radial-gradient(30% 44% at 22% 50%, #f3c7a3, transparent 72%), radial-gradient(28% 40% at 78% 42%, #cfe0b8, transparent 70%),
+    radial-gradient(34% 38% at 52% 82%, #e7a57f, transparent 72%);
+  opacity: 0.75;
+  animation: rise-in 1.1s var(--ease-out) 0.35s both;
+}
+.scene::after,
+.media__glow::after {
+  background: url('img/grain.svg');
+  opacity: 0.3;
+  mix-blend-mode: overlay;
+}
+.media__glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.panel {
+  position: absolute;
+  width: 380px;
+  padding: 20px 22px 22px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(21, 22, 25, 0.06),
+    0 1px 2px rgba(20, 22, 32, 0.06),
+    0 14px 34px -10px rgba(20, 22, 32, 0.16),
+    0 44px 80px -44px rgba(73, 42, 20, 0.3);
+  color: #151619;
+  font-size: 13.5px;
+  line-height: 1.35;
+  animation: panel-in 1s var(--ease-out) both;
+  transition:
+    translate 0.6s var(--ease-out),
+    box-shadow 0.6s var(--ease-out);
+}
+.panel.is-lit {
+  translate: 0 -8px;
+  box-shadow:
+    0 0 0 1px rgba(21, 22, 25, 0.06),
+    0 2px 4px rgba(20, 22, 32, 0.06),
+    0 22px 44px -12px rgba(20, 22, 32, 0.22),
+    0 54px 90px -44px rgba(73, 42, 20, 0.36);
+}
+.panel--rec {
+  left: 0;
+  top: 96px;
+  z-index: 2;
+  /* proportional, so between 1081 and 1440px the centre panel overlaps only the side panels' padding (1 % of the width, about 11px) */
+  width: 34%;
+  animation-delay: 0.65s;
+}
+.panel--alloc {
+  left: 33%;
+  top: 0;
+  z-index: 3;
+  width: 34%;
+  animation-delay: 0.5s;
+}
+.panel--exit {
+  right: 0;
+  top: 64px;
+  z-index: 2;
+  width: 34%;
+  animation-delay: 0.8s;
+}
+.panel__eyebrow {
+  margin: 0;
+  color: #5f6359;
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.panel__title {
+  margin: 8px 0 12px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.panel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ledger li,
+.roster li {
+  display: grid;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid #eceee8;
+}
+.ledger li {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+.ledger__who {
+  display: grid;
+  gap: 2px;
+  font-weight: 500;
+}
+.ledger__who small,
+.roster__more {
+  color: #6b6f66;
+  font: 400 11px/1.3 var(--mono);
+}
+.ledger__amt,
+.roster__amt,
+.falls__row > :last-child {
+  font-variant-numeric: tabular-nums;
+}
+.ledger__focus {
+  margin: 0 -10px;
+  padding: 9px 10px !important;
+  border-radius: 10px;
+  background: rgba(234, 177, 137, 0.14);
+}
+.pill {
+  display: inline-grid;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #e7f0e0;
+  color: #1a6b41;
+  font-size: 11px;
+  font-weight: 600;
+}
+/* the suggested match is confirmed by a person: Review → Confirmed, once, about 2.8 s in */
+.pill--swap {
+  animation: pill-confirm 2.9s var(--ease) both;
+}
+.pill--swap > span {
+  grid-area: 1 / 1;
+  text-align: center;
+}
+.pill__before {
+  opacity: 0;
+  animation: hold-out 2.9s var(--ease) both;
+}
+.pill__after {
+  animation: hold-in 2.9s var(--ease) both;
+}
+.roster li {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+.ref {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #f0f2ec;
+  color: #4f5349;
+  font: 500 11px/1.3 var(--mono);
+}
+.roster__name {
+  font-weight: 500;
+}
+.roster .roster__more {
+  display: block;
+  padding-bottom: 0;
+}
+.panel__total {
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid #eceee8;
+}
+.panel__label {
+  color: #5f6359;
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.panel__figure {
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.falls li {
+  padding: 8px 0 4px;
+}
+.panel__terms {
+  margin: -6px 0 6px;
+  color: #6b6f66;
+  font: 400 11px/1.4 var(--mono);
+}
+.falls__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+/* bars are to scale against the largest step (the carry split, £211,455.94): investors ink, the lead peach */
+.bar {
+  display: flex;
+  height: 8px;
+  margin-top: 7px;
+  border-radius: 999px;
+  background: #f0f2ec;
+  overflow: hidden;
+}
+.bar > span {
+  height: 100%;
+  transform-origin: 0 50%;
+  animation: bar-grow 0.9s var(--ease-out) both;
+}
+.bar__inv {
+  background: #151619;
+}
+.bar__lead {
+  background: #e39a6c;
+}
+.bar--capital {
+  width: 47.5%;
+  animation-delay: 1.5s !important;
+}
+.bar--pref {
+  width: 27.9%;
+  animation-delay: 1.62s !important;
+}
+.bar--catch {
+  width: 7%;
+  animation-delay: 1.74s !important;
+}
+.bar--split {
+  width: 80%;
+  animation-delay: 1.86s !important;
+}
+.bar--splitlead {
+  width: 20%;
+  animation-delay: 1.98s !important;
+}
+@media (prefers-color-scheme: dark) {
+  .scene::before {
+    background:
+      radial-gradient(30% 44% at 22% 50%, #6b4630, transparent 72%), radial-gradient(28% 40% at 78% 42%, #3e4d33, transparent 70%),
+      radial-gradient(34% 38% at 52% 82%, #7a4a33, transparent 72%);
+  }
+  .panel {
+    background: #1e1f22;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.07),
+      0 14px 34px -10px rgba(0, 0, 0, 0.5),
+      0 44px 80px -44px rgba(0, 0, 0, 0.7);
+    color: #f3f4f1;
+  }
+  .panel__eyebrow,
+  .panel__label {
+    color: #a3a3a3;
+  }
+  .ledger__who small,
+  .roster__more,
+  .panel__terms {
+    color: #9a9a9a;
+  }
+  .ledger li,
+  .roster li,
+  .panel__total {
+    border-color: #2c2d31;
+  }
+  .ref,
+  .bar {
+    background: #2a2b2f;
+    color: #c9cbc4;
+  }
+  .pill {
+    background: #16261d;
+    color: #5cc48e;
+  }
+  .bar__inv {
+    background: #e9ede4;
+  }
+}
+/* narrow screens: the three panels stack, full width, in order */
+@media (max-width: 1080px) {
+  .scene {
+    display: grid;
+    gap: 14px;
+    max-width: 440px;
+    height: auto;
+  }
+  .panel,
+  .panel--alloc {
+    position: relative;
+    inset: auto;
+    width: auto;
+    margin: 0;
+  }
+  .panel--rec {
+    order: 1;
+  }
+  .panel--alloc {
+    order: 2;
+  }
+  .panel--exit {
+    order: 3;
+  }
+}
+
+/* ---- the three steps: a deck that pins as you scroll; each card slides up over the last (wide screens, motion allowed) ---- */
+.steps {
+  position: relative;
+  z-index: 1;
+}
+.band {
+  margin-top: clamp(96px, 14vh, 140px);
+  height: 120px;
+  background: linear-gradient(180deg, var(--bg), var(--band));
+}
+.steps__body {
+  padding: 24px var(--gutter) 120px;
+  background: var(--band);
+}
+.deck__stage {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+.deck__cards {
+  display: grid;
+  gap: 24px;
+}
+.card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  align-items: center;
+  gap: clamp(24px, 3.4vw, 48px);
+  padding: clamp(28px, 4.6vw, 64px);
+  border-radius: 24px;
+  background: #1d1e22;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 30px 60px -30px rgba(0, 0, 0, 0.6);
+  color: var(--ink-text);
+  /* on the dark band the cards behind lighten a touch, so the layers stay visible */
+  --dim-color: #fff;
+  --dim-max: 0.07;
+}
+@media (prefers-color-scheme: dark) {
+  .card {
+    background: #1c1c1c;
+  }
+}
+.card .eyebrow {
+  color: var(--ink-muted);
+}
+.card__title {
+  margin: 0;
+  font-size: clamp(28px, 3.1vw, 42px);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+.card__body {
+  max-width: 38ch;
+  margin: 20px 0 0;
+  color: var(--ink-muted);
+}
+.media {
+  position: relative;
+  margin: 0;
+}
+.media__stage {
+  position: relative;
+  padding: 6% 5%;
+}
+/* the clip floats on a soft gradient field whose edges feather out (handbook §4.3); the caption sits below it, on the card */
+.media__glow {
+  position: absolute;
+  /* reaches past the clip, but stops short of the caption below it */
+  inset: -10% -7% -2%;
+  border-radius: 28px;
+  background:
+    radial-gradient(60% 70% at 25% 30%, var(--peach), transparent 70%), radial-gradient(55% 60% at 80% 35%, var(--sand), transparent 70%),
+    radial-gradient(60% 60% at 60% 95%, var(--clay), transparent 70%), #3a2c25;
+  -webkit-mask: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent), linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent);
+  -webkit-mask-composite: source-in;
+  mask:
+    linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent) intersect,
+    linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent);
+}
+.media--sage .media__glow {
+  background:
+    radial-gradient(60% 70% at 25% 30%, var(--sage), transparent 70%), radial-gradient(55% 60% at 80% 40%, var(--sand), transparent 70%),
+    radial-gradient(60% 60% at 50% 100%, #7fa27a, transparent 70%), #27332a;
+}
+/* the exit close-up starts mid-table (it frames the totals that change), so it feathers on both sides */
+.media--clay .media__frame {
+  -webkit-mask: linear-gradient(90deg, transparent, #000 7%, #000 86%, transparent);
+  mask: linear-gradient(90deg, transparent, #000 7%, #000 86%, transparent);
+}
+.media--clay .media__glow {
+  background:
+    radial-gradient(60% 70% at 25% 35%, var(--clay), transparent 70%), radial-gradient(55% 60% at 80% 30%, var(--lilac), transparent 70%),
+    radial-gradient(60% 60% at 60% 100%, var(--peach), transparent 70%), #2f2633;
+}
+.media__glow {
+  opacity: 0.7;
+}
+.media__glow::after {
+  opacity: 0.45;
+}
+.media__frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--frame);
+  aspect-ratio: 1296 / 800;
+  -webkit-mask: linear-gradient(90deg, #000 86%, transparent);
+  mask: linear-gradient(90deg, #000 86%, transparent);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 28px 60px -20px rgba(0, 0, 0, 0.55);
+}
+.media__frame img,
+.media__frame video {
+  position: absolute;
+  inset: 0 0 0 16px;
+  width: calc(100% - 16px);
+  height: 100%;
+  object-fit: cover;
+  object-position: top left;
+}
+.media__caption {
+  position: relative;
+  margin: 16px 0 0;
+  color: var(--ink-muted);
+  font-size: 13px;
+  text-align: center;
+}
+.deck__nav {
+  display: none;
+}
+
+/* pinned only where there is room: wide and at least 620px tall (site.js uses the same query) */
+@media (min-width: 900px) and (min-height: 620px) and (prefers-reduced-motion: no-preference) {
+  .js .deck {
+    --steps: 3;
+    position: relative;
+    height: calc(var(--steps) * 100vh);
+  }
+  /* the stage holds the cards and, below them, the step labels; it never lets anything overlap the labels */
+  .js .deck__stage {
+    position: sticky;
+    top: 96px;
+    height: min(700px, calc(100vh - 128px));
+  }
+  .js .deck__cards {
+    position: absolute;
+    inset: 0 0 52px;
+    display: block;
+    /* incoming cards rise from the bottom edge; room is left above for the peeking cards and the shadows */
+    clip-path: inset(-80px -80px 0 -80px);
+  }
+  /* --ty, --s and --dim are set by site.js from the scroll position */
+  .js .card {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    align-items: stretch;
+    padding: clamp(28px, 4vh, 56px) clamp(28px, 4vw, 56px);
+    transform-origin: 50% 0;
+    transform: translateY(var(--ty, 0)) scale(var(--s, 1));
+    will-change: transform;
+  }
+  .js .card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--dim-color);
+    opacity: calc(var(--dim, 0) * var(--dim-max));
+    pointer-events: none;
+  }
+  /* everything fits inside the card: the clip takes the height that is left, never more */
+  .js .card__text {
+    align-self: center;
+  }
+  .js .card__title {
+    font-size: clamp(26px, min(3.1vw, 5.4vh), 42px);
+  }
+  .js .media {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+  .js .media__stage {
+    display: flex;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    padding: 5.5%;
+  }
+  .js .media__frame {
+    height: 100%;
+    max-height: 100%;
+    width: auto;
+    max-width: 100%;
+  }
+  .js .deck__nav {
+    position: absolute;
+    inset: auto 0 0;
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .deck__nav a {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    color: rgba(246, 248, 243, 0.55);
+    font: 500 12px/1 var(--mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: color 0.2s var(--ease);
+  }
+  .deck__nav a[aria-current='step'] {
+    color: #f6f8f3;
+  }
+  .deck__bar {
+    position: relative;
+    width: 38px;
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    overflow: hidden;
+  }
+  .deck__bar > span {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: #f6f8f3;
+    transform-origin: 0 50%;
+    transform: scaleX(var(--fill, 0));
+  }
+}
+@media (max-width: 899px) {
+  .card {
+    grid-template-columns: 1fr;
+  }
+}
+/* phones: the close-up is shown at life size (text about 12px), cropped to the window and feathered at the cut edge */
+@media (max-width: 600px) {
+  .card {
+    padding: 24px 20px;
+  }
+  .media__stage {
+    padding: 0;
+  }
+  .media__glow {
+    display: none;
+  }
+  /* a near-square frame: object-fit cover then scales the close-up by its height (300px tall ≈ 0.75 × life size) and shows
+     it from the top left, so the boxes never grow wider than the frame (a wider box widened the phone layout) */
+  .media__frame {
+    aspect-ratio: auto;
+    height: 300px;
+  }
+  .media__frame img,
+  .media__frame video {
+    inset: 0 0 0 10px;
+    width: calc(100% - 10px);
+    height: 100%;
+    object-fit: cover;
+    object-position: left top;
+  }
+}
+
+/* ---- why trust the numbers: type only, on the same dark band as the steps ---- */
+.trust {
+  background: var(--band);
+  color: #f6f8f3;
+}
+.trust__inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 140px var(--gutter);
+}
+.section-label {
+  margin: 0;
+  color: var(--muted);
+}
+.trust .section-label {
+  color: rgba(246, 248, 243, 0.6);
+}
+.facts {
+  margin: 24px 0 0;
+}
+.fact {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: end;
+  gap: 32px;
+  padding: 44px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.fact dt {
+  font-size: clamp(48px, 7vw, 104px);
+  white-space: nowrap;
+  font-weight: 500;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.fact dd {
+  max-width: 32ch;
+  margin: 0;
+  color: rgba(246, 248, 243, 0.72);
+  font-size: 20px;
+  line-height: 1.4;
+}
+.trust__note {
+  margin: 8px 0 0;
+  color: rgba(246, 248, 243, 0.55);
+  font: 400 12px/1.4 var(--mono);
+}
+.band--up {
+  margin-top: 0;
+  background: linear-gradient(180deg, var(--band), var(--bg));
+}
+
+/* ---- privacy: centred type, no container ---- */
+.privacy {
+  padding: clamp(120px, 18vh, 200px) var(--gutter);
+  text-align: center;
+}
+.privacy__title {
+  max-width: 16ch;
+  margin: 0 auto;
+  font-size: clamp(40px, 5.5vw, 64px);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.privacy__body {
+  max-width: 52ch;
+  margin: 28px auto 0;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1.5;
+}
+
+/* ---- how it was built: four columns under hairlines ---- */
+.built {
+  max-width: 1180px;
+  margin: 0 auto;
+  /* a nav link lands with the label 140px down, as on the sections that have their own top padding */
+  scroll-margin-top: 140px;
+  padding: 0 var(--gutter) clamp(120px, 16vh, 160px);
+}
+.built__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 32px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.built__grid li {
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.built__n {
+  color: var(--muted);
+  font: 500 12px/1 var(--mono);
+  letter-spacing: 0.08em;
+}
+.built__grid h3 {
+  margin: 14px 0 8px;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.built__grid p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.built__close {
+  max-width: 40ch;
+  margin: 72px 0 0;
+  font-size: 24px;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+.built__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin: 24px 0 0;
+}
+.built__links a {
+  font-weight: 500;
+  text-decoration: none;
+}
+@media (max-width: 900px) {
+  .built__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .fact {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+@media (max-width: 520px) {
+  .built__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- closing call to action: the second and last gradient, full bleed, echoing the hero glow ---- */
+.cta {
+  position: relative;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  min-height: 70vh;
+  padding: 120px var(--gutter);
+  overflow: hidden;
+  isolation: isolate;
+  text-align: center;
+}
+.cta::before,
+.cta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+.cta::before {
+  background:
+    radial-gradient(40% 60% at 25% 40%, #f3c7a3, transparent 70%), radial-gradient(38% 55% at 75% 35%, #cfe0b8, transparent 70%),
+    radial-gradient(45% 55% at 55% 90%, #e7a57f, transparent 72%);
+  background-size: 140% 140%;
+  animation: drift 24s var(--ease) both;
+}
+.cta::after {
+  background: url('img/grain.svg');
+  opacity: 0.3;
+  mix-blend-mode: overlay;
+}
+.cta__title {
+  margin: 0;
+  font-size: clamp(44px, 7vw, 72px);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+.cta__body {
+  margin: 20px 0 32px;
+  color: var(--muted);
+  font-size: 20px;
+}
+@media (prefers-color-scheme: dark) {
+  .cta::before {
+    background:
+      radial-gradient(40% 60% at 25% 40%, #6b4630, transparent 70%), radial-gradient(38% 55% at 75% 35%, #3e4d33, transparent 70%),
+      radial-gradient(45% 55% at 55% 90%, #7a4a33, transparent 72%);
+    background-size: 140% 140%;
+  }
+}
+@keyframes drift {
+  from {
+    background-position: 0% 0%;
+  }
+  to {
+    background-position: 100% 100%;
+  }
+}
+
+/* ---- footer ---- */
+.footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: clamp(64px, 10vh, 112px) var(--gutter) 40px;
+  background: var(--ink);
+  color: var(--ink-text);
+}
+@media (prefers-color-scheme: dark) {
+  .footer {
+    background: #0f0f0f;
+  }
+}
+.footer__mark {
+  margin: 0;
+  font-size: clamp(44px, 9vw, 140px);
+  font-weight: 500;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+}
+.footer__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 32px;
+  margin-top: 64px;
+}
+.footer__cols > div {
+  padding-top: 16px;
+  border-top: 1px solid rgba(246, 248, 243, 0.18);
+}
+.footer__h {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.footer ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.footer li + li {
+  margin-top: 6px;
+}
+.footer a {
+  color: var(--ink-muted);
+  font-size: 15px;
+  text-decoration: none;
+  transition: color 0.2s var(--ease);
+}
+.footer a:hover {
+  color: var(--ink-text);
+}
+.footer__legal {
+  margin: 56px 0 0;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+/* ---- entrances ---- */
+.js [data-reveal] {
+  opacity: 0;
+  transform: translateY(28px);
+  filter: blur(12px);
+  transition:
+    opacity 0.9s var(--ease-out),
+    transform 0.9s var(--ease-out),
+    filter 0.9s var(--ease-out);
+}
+.js [data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+@keyframes focus-in {
+  0% {
+    opacity: 0;
+    filter: blur(24px);
+    transform: translateY(30px) scale(0.86);
+  }
+  60% {
+    opacity: 1;
+    filter: blur(4px);
+    transform: translateY(-3px) scale(1.012);
+  }
+  100% {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(18px);
+  }
+}
+@keyframes char-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+    filter: blur(6px);
+  }
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(28px) scale(0.97);
+  }
+}
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes pill-confirm {
+  0%,
+  86% {
+    background: #fbf1dc;
+    color: #8a5a00;
+  }
+}
+@keyframes hold-out {
+  0%,
+  86% {
+    opacity: 1;
+  }
+}
+@keyframes hold-in {
+  0%,
+  86% {
+    opacity: 0;
+  }
+}
+
+/* ---- reduced motion: nothing moves; the clips give way to their still images ---- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .js [data-reveal] {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+  .media__frame video {
+    display: none;
+  }
+}
