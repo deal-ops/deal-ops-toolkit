@@ -286,9 +286,37 @@ a:hover > .arrow {
     display: none;
   }
 }
-@media (max-width: 520px) {
+/* phones: the floating capsules covered the text they passed over (iPhone, 2026-10-29), so the nav becomes one bar
+   across the top, nearly opaque, with the brand on the left and the app link on the right */
+@media (max-width: 760px) {
+  .nav {
+    inset: 0 0 auto;
+    padding: 8px 12px;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    backdrop-filter: blur(18px) saturate(1.4);
+    border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    pointer-events: auto;
+    transition: background-color 0.28s var(--ease);
+  }
+  .nav .glass {
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
+  }
+  .nav__brand,
   .nav__cta {
-    display: none;
+    height: 40px;
+    padding: 0 6px;
+  }
+  .nav.is-dark {
+    background: rgba(21, 22, 25, 0.9);
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+    color: var(--ink-text);
+  }
+  .nav.is-dark .glass {
+    color: var(--ink-text);
   }
 }
 
@@ -1216,6 +1244,44 @@ a:hover > .arrow {
   }
   to {
     background-position: 100% 100%;
+  }
+}
+
+/* phones: the desktop gaps read as empty screens on a phone (iPhone, 2026-10-29); about half */
+@media (max-width: 760px) {
+  .hero {
+    padding-top: 104px;
+  }
+  .band {
+    margin-top: 56px;
+    height: 64px;
+  }
+  .band--up {
+    margin-top: 0;
+  }
+  .steps__body {
+    padding-bottom: 64px;
+  }
+  .trust__inner {
+    padding: 64px var(--gutter);
+  }
+  .fact {
+    padding: 28px 0;
+  }
+  .privacy {
+    padding: 88px var(--gutter);
+  }
+  .built {
+    padding-bottom: 88px;
+  }
+  .cta {
+    min-height: 0;
+    padding: 96px var(--gutter);
+  }
+}
+@media (prefers-color-scheme: dark) {
+  .band {
+    height: 48px;
   }
 }
 

@@ -73,7 +73,7 @@ Light or dark follows the device setting; there is no switch on the page.
 ## 4. Components
 
 ### 4.1 Navigation
-Fixed capsules. The hover pill's position is computed by `site.js` and passed as CSS custom properties (no inline styles). The glass turns dark while a dark section sits under it; the watched band is the nav's own strip in pixels, because Intersection Observer resolves percentage margins against the width. At 760px and below the three section links hide; at 520px and below "Open the app" hides too (the hero has both links).
+Fixed capsules. The hover pill's position is computed by `site.js` and passed as CSS custom properties (no inline styles). The glass turns dark while a dark section sits under it; the watched band is the nav's own strip in pixels, because Intersection Observer resolves percentage margins against the width. At 760px and below (phones) the nav becomes one bar across the top, nearly opaque, blurred, with a hairline below: the brand on the left, "Open the app" on the right, the section links hidden. The floating capsules covered the text scrolling under them on a phone.
 
 ### 4.2 Hero illustration
 - Three product panels drawn in type, not screenshots: crisp at any size and readable at a glance.
@@ -162,7 +162,8 @@ Type only, no cards: large figures under hairlines; centred privacy statement; f
 6. 100vw decorations can widen a phone layout; clip on `html` too, and measure `scrollWidth`, not just one screenshot.
 7. Intersection Observer's percentage margins resolve against the width; use pixels.
 8. Mid widths escape screenshots: 1081–1200px once had overlapping panels.
-9. An illustration must add up and must not mislead: the missing £4,500 of exit costs, and a confirmation that looked automatic, both weakened it.
+9. Desktop spacing does not carry over to phones: gaps became empty screens; phones use about half, and in dark mode the light/dark bands shrink to 48px (both ends are nearly the same colour). Floating capsules cover content on a phone; use a bar.
+10. An illustration must add up and must not mislead: the missing £4,500 of exit costs, and a confirmation that looked automatic, both weakened it.
 
 ## 11. Deployment
 - Hosting project `deal-ops-toolkit-site`: root directory `site`, no build, production branch `release` (as the app: production only from `release`).
