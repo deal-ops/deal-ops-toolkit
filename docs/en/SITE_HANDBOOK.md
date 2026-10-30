@@ -1,6 +1,6 @@
 # Project website handbook
 
-English handbook for the project website, v1.1, 2026-10-29. Live at https://deal-ops-toolkit-site.vercel.app (source in `site/`). This is the basis for every later change to the site: when the design or a method changes, update this handbook and add a line to §9.
+English handbook for the project website, v1.2, 2026-10-30 (v1.1, 2026-10-29). Live at https://deal-ops-toolkit-site.vercel.app (source in `site/`). This is the basis for every later change to the site: when the design or a method changes, update this handbook and add a line to §9.
 
 ## 1. What the site is for
 
@@ -16,19 +16,19 @@ English handbook for the project website, v1.1, 2026-10-29. Live at https://deal
 | 1 | Navigation | Floating glass capsules | Deal Ops Toolkit · How it works · Why trust it · How it was built · Open the app | A pill slides to the hovered link; the glass turns dark over dark sections |
 | 2 | Hero | Light, open, no container | Headline "Reconcile an SPV / to the penny.", the grey verb turning to Allocate and Distribute and back; lead paragraph; two buttons | Focus-in entrance; the verb turns letter by letter every 4.5 s, once round, then stops |
 | 3 | Hero illustration | Full-width soft glow fading out above and below | Three panels: bank statement, closing allocation, exit waterfall (§4.2) | Panels rise in turn; bars grow; Review → Confirmed; the panel for the headline's verb lifts |
-| 4 | Band | Light to dark, 120px | none ("How it works" for screen readers only) | — |
+| 4 | Light to dark | Hard edge, no band (2026-10-30) | none ("How it works" for screen readers only); 96px of space at the top of the dark section (56px on phones) | — |
 | 5 | Three-step deck | Dark full-width band | Three cards: text and a close-up clip from the real app; step labels with progress bars | Pinned; each card slides up over the last (§4.3) |
-| 6 | Why trust the numbers | Same dark band | Small section label; four large figures: Exact · 1,800 · 267 / 267 · 199 / 199; the release the figures come from | Fade in |
-| 7 | Band | Dark to light, 120px | — | — |
+| 6 | Why trust the numbers | Same dark band | Small section label; four large figures, filled with a white-to-grey gradient: Exact · 1,800 · 267 / 267 · 199 / 199; the release the figures come from | Fade in |
+| 7 | Dark to light | Hard edge (2026-10-30) | — | — |
 | 8 | Privacy | Light, centred type | "Your deal data stays in your browser" and the app's privacy sentence (R-X-02) word for word | Fade in |
 | 9 | How it was built | Light, four columns under hairlines | 01–04, the closing line on who does what, links to the repository and the review summary | Fade in |
 | 10 | Closing call to action | Full-width glow, echoing the hero | "Try it with the sample deal" / "No sign-up, nothing to install." / tour button | The glow drifts once (24 s) |
-| 11 | Footer | Dark | Large wordmark; Product / Code / Contact; the app's disclaimer (R-X-03) | — |
+| 11 | Footer | Dark | Product / Code / Contact; the app's disclaimer (R-X-03); last, a near full-width wordmark fading downwards and cut off by the bottom edge (decorative, hidden from screen readers) | No entrance (§10 item 11) |
 
 **Layout rules**
 - At most one rounded container per screen (adopted after the first sample read as "cards stacked on cards").
 - No bare large headings; section headings are small mono labels.
-- Light and dark sections alternate, joined by 120px gradient bands.
+- Light and dark sections alternate and **meet at a hard edge**: a linear gradient between them passes through a muddy grey (bands removed 2026-10-30).
 - A nav link lands with the section's content about 140px below the top; sections without their own top padding use `scroll-margin-top: 140px`.
 
 ## 3. Design system
@@ -54,7 +54,7 @@ Light or dark follows the device setting; there is no switch on the page.
 ### 3.2 Type
 - Inter (variable) for text and headings, IBM Plex Mono for labels and numbers; both open-licensed, served by the site itself, Latin subset, preloaded.
 - Hero headline `clamp(44px, 7.6vw, 100px)`, weight 500, line height 0.97, tracking −0.04em; below 380px `clamp(34px, 10.4vw, 44px)` so "Distribute an exit" fits one line at 320px.
-- Section labels: mono 13px, upper case, tracking 0.14em. Card titles `clamp(28px, 3.1vw, 42px)` (pinned: `clamp(26px, min(3.1vw, 5.4vh), 42px)`). Trust figures `clamp(48px, 7vw, 104px)`, never wrapped. Amounts always `tabular-nums`.
+- Section labels: mono 13px, upper case, tracking 0.14em. Card titles `clamp(28px, 3.1vw, 42px)` (pinned: `clamp(26px, min(3.1vw, 5.4vh), 42px)`). Trust figures `clamp(48px, 6.8vw, 98px)`, never wrapped, filled with a white-to-grey gradient (`#f6f8f3` 25% → `#8f938b` 110%, 5.8:1 at the darkest point); the box follows the figure (`width: max-content`), because a gradient clipped to the text paints only inside the box and the last digit of "199 / 199" was cut off; the size cap keeps ≥ 36px before the description at any width. Footer wordmark `calc((100vw - 2 * var(--gutter)) / 7.2)`: it spans the gutters (the word is about 7 times as wide as its size, with slack for a scrollbar), fades from 30% white to transparent and loses about 0.14em to `overflow: hidden` at the bottom; plain 14% white where `background-clip: text` is unsupported. Amounts always `tabular-nums`.
 
 ### 3.3 Shape and shadow
 - Buttons and nav are pills; buttons 48px high. Hero panels radius 18px with four shadow layers; deck cards radius 24px; clip frames 12px.
@@ -152,6 +152,7 @@ Type only, no cards: large figures under hairlines; centred privacy statement; f
 | 2026-10-29 | All three nav links kept, and their sections built | Removing links to sections not yet built was the wrong fix |
 | 2026-10-29 | The script limit counts the size as served (gzip) | Owner's choice |
 | 2026-10-29 | Proportional hero panels rather than a higher stacking breakpoint | A review suggested stacking up to 1216px; that would turn small laptops into one narrow column |
+| 2026-10-30 | Trust figures filled with a white-to-grey gradient; footer wordmark moved to the bottom, near full width, fading and cut off; light and dark sections meet at a hard edge (120px bands removed, 96px top space on the dark section); no grain on the dark sections | Owner's decision. A gradient between dark and light passes through a muddy grey; grain on the dark sections was barely visible and risked dropped frames while the deck is pinned |
 
 ## 10. Lessons
 1. Judge review findings before changing anything.
@@ -162,8 +163,9 @@ Type only, no cards: large figures under hairlines; centred privacy statement; f
 6. 100vw decorations can widen a phone layout; clip on `html` too, and measure `scrollWidth`, not just one screenshot.
 7. Intersection Observer's percentage margins resolve against the width; use pixels.
 8. Mid widths escape screenshots: 1081–1200px once had overlapping panels.
-9. Desktop spacing does not carry over to phones: gaps became empty screens; phones use about half, and in dark mode the light/dark bands shrink to 48px (both ends are nearly the same colour). Floating capsules cover content on a phone; use a bar.
+9. Desktop spacing does not carry over to phones: gaps became empty screens; phones use about half. Floating capsules cover content on a phone; use a bar.
 10. An illustration must add up and must not mislead: the missing £4,500 of exit costs, and a confirmation that looked automatic, both weakened it.
+11. Nothing at the very bottom of the page may use the scroll-in entrance: its trigger line sits "12%" above the bottom of the window, and that percentage resolves against the window **width** (item 7), about 170px on a desktop; the footer wordmark never reaches it, so it would stay invisible. Show such elements as they are.
 
 ## 11. Deployment
 - Hosting project `deal-ops-toolkit-site`: root directory `site`, no build, production branch `release` (as the app: production only from `release`).
@@ -171,4 +173,4 @@ Type only, no cards: large figures under hairlines; centred privacy statement; f
 - Roll back by pointing production at the previous deployment, or by resetting `release` and pushing again.
 
 ## 12. Not done yet
-- A check on a real phone (only Chromium phone profiles so far).
+- Nothing. The owner checked the site on an iPhone; the two problems he found (the nav covering text, oversized phone gaps) are fixed.

@@ -1,12 +1,13 @@
-English snapshot of docs/03_RULES_AND_REVIEW.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated on 2026-10-23.
+English snapshot of docs/03_RULES_AND_REVIEW.md (Chinese, source of truth) at release v1.0.0, translated on 2026-10-20, updated on 2026-10-30.
 
 # Deal Ops Toolkit — Product rules, development rules and review process
 
-Version v0.7.3 (last revised 2026-10-23) · 2026-10-17 · Status: **Approved (2026-10-17)**; v0.7.1 adds the "progress record" Definition of Done item at the owner's request (a process change; it does not affect requirements or calculation rules)
+Version v0.7.4 (last revised 2026-10-30) · 2026-10-17 · Status: **Approved (2026-10-17)**; v0.7.1 adds the "progress record" Definition of Done item at the owner's request (a process change; it does not affect requirements or calculation rules)
 
 - v0.1 → v0.2: changed in response to Codex review items #19 #20 #22 (you cannot approve your own PR, release timing, anonymised feedback, scope freeze).
 - v0.7.1 → v0.7.2 (2026-10-20, clarification): D2 now says the hurdle is exact too, as in PRD C-01.
 - v0.7.2 → v0.7.3 (2026-10-23, process): adds the G2a small-fix track (owner: "as suggested").
+- v0.7.3 → v0.7.4 (2026-10-30, process): cross-review by risk; a G2a small fix that only changes styles, copy, docs or the website skips Codex (owner: "as suggested").
 
 ---
 
@@ -72,6 +73,10 @@ G0 requirements review → G1 design review → [freeze lifted] → G2 every PR 
 In the owner's words: an hour from request to delivery for this is too slow. The v1.1.1 fix, which only changed a save message, took over an hour through every gate, most of it on two full mutation runs and the full release checklist.
 - **When it applies (all must hold):** no change under `src/lib/` or to any calculation, rounding or money decision; no change to import or export formats; at most about 5 source files changed (tests and docs not counted). Otherwise the full G2 / G3 applies.
 - **G2 step 0 becomes:** rule check and hostile inputs as usual; mutation runs only the mutants in the changed files (`node scripts/mutation-check.mjs --files=<file,file>`), and every new mutant must be caught; the fresh-context review as usual. Once the reviewer's findings are fixed, Codex and the local re-check may run at the same time.
+- **Codex by risk (v0.7.4, owner 2026-10-30):** a Codex round is costly; its value is a second model family's eyes, so it is kept for the changes most likely to go wrong and most costly when they do.
+  - Anything touching calculation, money, rounding, import or export formats, or a milestone feature: as before, self-test gate + Codex until READY / READY AFTER FIXES.
+  - A G2a small fix that **only changes styles, copy, docs or the website** (no change to the app's behaviour): self-test gate only (fresh-context review, each finding judged and fixed); **no Codex**; the review record says "no Codex under v0.7.4".
+  - Unsure which: ask the owner first.
 - **G3 becomes:** all automated tests (including end-to-end); **one full mutation run**; from the manual checklist only the items this change touches, plus M-01 to M-03 as a smoke test; the production smoke test and security headers as usual.
 - **Waiting time:** while mutation, Codex or CI runs, move the next piece of work forward; if CI shows no progress for 3 minutes, find out why and cancel and re-run a stuck job.
 - The PR description says "small-fix track" and which conditions hold.
@@ -93,7 +98,7 @@ Before a PR merges it must meet the following (for items that do not apply, say 
 - [ ] Every acceptance point involved has a test, with the ID in the test name; every hand-worked case in the test plan matches
 - [ ] Invalid-input cases exist and pass
 - [ ] CI fully green (including the TC coverage check and Python recalculation)
-- [ ] Codex review comments handled and recorded
+- [ ] Codex review comments handled and recorded (or, for a G2a fix that skips Codex, the reason stated)
 - [ ] The owner has accepted the checklist items this PR touches on the preview link, and commented Accepted
 - [ ] Docs updated to match
 - [ ] This stage's section in the progress record (`docs/PROGRESS.md`; English snapshot `docs/en/PROGRESS.md`) updated (goal / what was done / how it was verified / reviews / decisions / open items / links), and synced to the shared Google Doc

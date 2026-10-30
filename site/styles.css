@@ -770,17 +770,16 @@ a:hover > .arrow {
 }
 
 /* ---- the three steps: a deck that pins as you scroll; each card slides up over the last (wide screens, motion allowed) ---- */
+/* light and dark sections meet at a hard edge: a gradient between them passes through a muddy grey (owner 2026-10-30) */
 .steps {
   position: relative;
   z-index: 1;
-}
-.band {
   margin-top: clamp(96px, 14vh, 140px);
-  height: 120px;
-  background: linear-gradient(180deg, var(--bg), var(--band));
+  /* a nav link lands with the first card 140px down */
+  scroll-margin-top: 44px;
 }
 .steps__body {
-  padding: 24px var(--gutter) 120px;
+  padding: 96px var(--gutter) 120px;
   background: var(--band);
 }
 .deck__stage {
@@ -1073,12 +1072,25 @@ a:hover > .arrow {
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 .fact dt {
-  font-size: clamp(48px, 7vw, 104px);
+  /* "199 / 199" must clear its column with room before the description, up to the widest window */
+  font-size: clamp(48px, 6.8vw, 98px);
   white-space: nowrap;
   font-weight: 500;
   line-height: 0.9;
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
+}
+/* the figures fade from white to grey, top to bottom; the darkest point is still 5.8:1 on the band.
+   The box follows the figure: a gradient clipped to the text paints only inside the box, and "199 / 199" is wider than its column */
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .fact dt {
+    justify-self: start;
+    width: max-content;
+    background: linear-gradient(180deg, #f6f8f3 25%, #8f938b 110%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
 }
 .fact dd {
   max-width: 32ch;
@@ -1091,10 +1103,6 @@ a:hover > .arrow {
   margin: 8px 0 0;
   color: rgba(246, 248, 243, 0.55);
   font: 400 12px/1.4 var(--mono);
-}
-.band--up {
-  margin-top: 0;
-  background: linear-gradient(180deg, var(--band), var(--bg));
 }
 
 /* ---- privacy: centred type, no container ---- */
@@ -1252,14 +1260,12 @@ a:hover > .arrow {
   .hero {
     padding-top: 104px;
   }
-  .band {
+  .steps {
     margin-top: 56px;
-    height: 64px;
-  }
-  .band--up {
-    margin-top: 0;
+    scroll-margin-top: 84px;
   }
   .steps__body {
+    padding-top: 56px;
     padding-bottom: 64px;
   }
   .trust__inner {
@@ -1279,16 +1285,12 @@ a:hover > .arrow {
     padding: 96px var(--gutter);
   }
 }
-@media (prefers-color-scheme: dark) {
-  .band {
-    height: 48px;
-  }
-}
 
 /* ---- footer ---- */
 .footer {
+  overflow: hidden;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding: clamp(64px, 10vh, 112px) var(--gutter) 40px;
+  padding: clamp(64px, 10vh, 112px) var(--gutter) 0;
   background: var(--ink);
   color: var(--ink-text);
 }
@@ -1297,18 +1299,29 @@ a:hover > .arrow {
     background: #0f0f0f;
   }
 }
+/* the wordmark sits last, nearly full width, fading down and cut off by the page's bottom edge (a watermark, not a heading) */
 .footer__mark {
-  margin: 0;
-  font-size: clamp(44px, 9vw, 140px);
+  margin: clamp(48px, 8vh, 80px) 0 -0.14em -0.04em;
+  /* the wordmark is about 7 times as wide as its size: this spans the gutters (scrollbar width left as slack) */
+  font-size: calc((100vw - 2 * var(--gutter)) / 7.2);
   font-weight: 500;
   line-height: 0.95;
   letter-spacing: -0.045em;
+  white-space: nowrap;
+  color: rgba(246, 248, 243, 0.14);
+}
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .footer__mark {
+    background: linear-gradient(180deg, rgba(246, 248, 243, 0.3), rgba(246, 248, 243, 0) 92%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
 }
 .footer__cols {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 32px;
-  margin-top: 64px;
 }
 .footer__cols > div {
   padding-top: 16px;
