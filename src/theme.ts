@@ -20,7 +20,7 @@ export function saveTheme(storage: Storage | undefined, theme: Theme): void {
   }
 }
 
-/** An attribute on <html>, not an inline style (CSP style-src 'self'); index.css reads it. */
+/** An attribute on <html>, not an inline style (CSP style-src 'self'); tokens.css and index.css read it. */
 export function applyTheme(theme: Theme, root: HTMLElement = document.documentElement): void {
   if (theme === 'system') root.removeAttribute('data-theme')
   else root.setAttribute('data-theme', theme)

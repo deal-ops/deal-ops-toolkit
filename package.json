@@ -18,7 +18,8 @@
     "e2e": "playwright test",
     "e2e:check": "playwright test && node scripts/check-e2e.mjs e2e-report.json",
     "site:build": "rolldown site-src/site.js -f iife -m -o site/site.js",
-    "site:check": "node scripts/check-site.mjs"
+    "site:check": "node scripts/check-site.mjs",
+    "check:tokens": "node scripts/check-tokens.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "5.3.0",

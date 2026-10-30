@@ -1,0 +1,2 @@
+# src/tokens.css is checked by SHA-256 (scripts/check-tokens.mjs): keep its bytes, never convert line endings
+src/tokens.css -text

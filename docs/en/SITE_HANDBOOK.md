@@ -35,7 +35,7 @@ English handbook for the project website, v1.3, 2026-10-30 (FAQ section; v1.2 an
 ## 3. Design system
 
 ### 3.1 Colour
-The app's own tokens (`src/index.css`), so the site and the app read as one product.
+The light-mode core colours and the primary button match the app (its values are in `src/tokens.css`, shared word for word with Deal Ops Inbox, a second component in design), so the site and the app read as one product. The site keeps its own copy of these values and does not use `tokens.css`; its design is frozen (Inbox design rules v0.3, not yet published).
 
 | Use | Light | Dark |
 |---|---|---|

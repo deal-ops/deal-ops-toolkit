@@ -19,6 +19,8 @@ jobs:
       - run: npm ci
       - name: Typecheck
         run: npm run typecheck
+      - name: Shared design variables (tokens.css hash, shared with Deal Ops Inbox)
+        run: npm run check:tokens
       - name: Lint
         run: npm run lint
       - name: Oracle self-check (independent Python implementation)
