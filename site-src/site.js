@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
   navPill()
   navTone()
   scrollEffects()
+  faqOpen()
 })
 
 /** Hero: the phrase turns over letter by letter every 4.5 s, once through and back to the first, then stays still. Held while
@@ -142,6 +143,22 @@ function navTone() {
   }
   watch()
   addEventListener('resize', watch)
+}
+
+/** A link to one FAQ question (#faq-import) opens it, on arrival and on later in-page links. Reads the address only. */
+function faqOpen() {
+  const open = () => {
+    let id = ''
+    try {
+      id = decodeURIComponent(location.hash.slice(1))
+    } catch {
+      return // a malformed address matches nothing
+    }
+    const el = id && document.getElementById(id)
+    if (el && el.matches('.faq__item')) el.open = true
+  }
+  addEventListener('hashchange', open)
+  open()
 }
 
 /** Scroll-linked work, done once per frame: the step deck and which clip plays. */

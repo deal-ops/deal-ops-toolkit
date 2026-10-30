@@ -281,6 +281,19 @@ a:hover > .arrow {
 .nav.is-dark .nav__pill {
   background: rgba(255, 255, 255, 0.1);
 }
+/* nav labels never wrap; with four section links the capsules tighten up to 900px so they still fit at 761px */
+.nav a {
+  white-space: nowrap;
+}
+@media (max-width: 900px) {
+  .nav__links a {
+    padding: 0 10px;
+  }
+  .nav__brand,
+  .nav__cta {
+    padding: 0 14px;
+  }
+}
 @media (max-width: 760px) {
   .nav__links {
     display: none;
@@ -1195,6 +1208,82 @@ a:hover > .arrow {
   }
 }
 
+/* ---- FAQ: a group title on the left, its questions on the right, under the same hairlines as "How it was built".
+   Native <details>: they open without the script, and the script only opens the one a link points at (handbook §4.5) ---- */
+.faq {
+  max-width: 1180px;
+  margin: 0 auto;
+  scroll-margin-top: 140px;
+  padding: 0 var(--gutter) clamp(120px, 16vh, 160px);
+}
+.faq__group {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  gap: 32px;
+  margin: 24px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.faq__group + .faq__group {
+  margin-top: 56px;
+}
+.faq__h {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.faq__item {
+  border-bottom: 1px solid var(--line);
+  /* a link to one question lands below the floating nav */
+  scroll-margin-top: 140px;
+}
+.faq__item summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 24px;
+  padding: 16px 0;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  list-style: none;
+  cursor: pointer;
+}
+.faq__item:first-child summary {
+  padding-top: 0;
+}
+.faq__item summary::-webkit-details-marker {
+  display: none;
+}
+.faq__item summary::after {
+  content: '+';
+  flex: none;
+  color: var(--muted);
+  font: 400 20px/1 var(--mono);
+}
+.faq__item[open] summary::after {
+  content: '\2212';
+}
+.faq__item summary:hover::after {
+  color: var(--text);
+}
+.faq__item p {
+  max-width: 62ch;
+  margin: 0;
+  padding: 0 0 20px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.6;
+}
+@media (max-width: 900px) {
+  .faq__group {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
 /* ---- closing call to action: the second and last gradient, full bleed, echoing the hero glow ---- */
 .cta {
   position: relative;
@@ -1279,6 +1368,13 @@ a:hover > .arrow {
   }
   .built {
     padding-bottom: 88px;
+  }
+  .faq {
+    padding-bottom: 88px;
+    scroll-margin-top: 84px;
+  }
+  .faq__item {
+    scroll-margin-top: 72px;
   }
   .cta {
     min-height: 0;

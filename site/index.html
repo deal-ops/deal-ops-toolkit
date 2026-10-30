@@ -26,6 +26,7 @@
         <a href="#how">How it works</a>
         <a href="#trust">Why trust it</a>
         <a href="#built">How it was built</a>
+        <a href="#faq">FAQ</a>
       </nav>
       <span class="nav__end">
         <a class="nav__cta glass" href="https://deal-ops-toolkit.vercel.app">Open the app</a>
@@ -309,11 +310,159 @@
         </ol>
         <p class="built__close" data-reveal>The owner defines the problem, the rules and the gates; Claude Code writes the implementation.</p>
         <p class="built__links">
-          <a href="https://github.com/yuannh/deal-ops-toolkit">GitHub <span class="arrow" aria-hidden="true">→</span></a>
-          <a href="https://github.com/yuannh/deal-ops-toolkit/blob/main/docs/en/REVIEW_SUMMARY.md"
+          <a href="https://github.com/deal-ops/deal-ops-toolkit">GitHub <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="https://github.com/deal-ops/deal-ops-toolkit/blob/main/docs/en/REVIEW_SUMMARY.md"
             >Review summary <span class="arrow" aria-hidden="true">→</span></a
           >
         </p>
+      </section>
+
+      <section class="faq" id="faq" aria-labelledby="faq-h">
+        <h2 class="eyebrow section-label" id="faq-h">FAQ</h2>
+        <div class="faq__group">
+          <h3 class="faq__h">Is it for me?</h3>
+          <div class="faq__list">
+            <details class="faq__item" id="faq-who">
+              <summary>Who is it for?</summary>
+              <p>
+                Syndicate leads and deal operations teams running an SPV round, and angels who want to see how an exit is split. No data of your own yet?
+                <a href="https://deal-ops-toolkit.vercel.app">Load the sample deal</a> and take the 3-minute tour.
+              </p>
+            </details>
+            <details class="faq__item" id="faq-not">
+              <summary>What does it not do?</summary>
+              <p>
+                It does not move money, connect to a bank or send emails. It does not produce legal documents, run KYC or AML checks, or file anything with a
+                regulator or tax authority. It does not decide S/EIS eligibility, and it is not tax, legal or investment advice. It does not convert currencies.
+                The exit split covers one investment and one exit with the same terms for every investor: no staged capital calls, earlier distributions,
+                management fees, VAT or individual carry terms.
+              </p>
+            </details>
+            <details class="faq__item" id="faq-structure">
+              <summary>What deal structure does it assume?</summary>
+              <p>
+                An SPV that holds the shares through a nominee (bare trust): the nominee is on the company&rsquo;s share register and investors hold beneficial
+                interests, so fractional shares are allowed. Investors holding shares in the company directly are not supported.
+              </p>
+            </details>
+            <details class="faq__item" id="faq-account">
+              <summary>Do I need an account?</summary>
+              <p>
+                No. It runs in your browser: no sign-up, nothing to install. It is a working prototype, and the code is open source under the
+                <a href="https://github.com/deal-ops/deal-ops-toolkit/blob/main/LICENSE">Apache-2.0 licence</a>.
+              </p>
+            </details>
+          </div>
+        </div>
+        <div class="faq__group">
+          <h3 class="faq__h">Your data</h3>
+          <div class="faq__list">
+            <details class="faq__item" id="faq-data">
+              <summary>Where does my deal data go?</summary>
+              <p>
+                Your deal data is processed in your browser and never sent by this app. The hosting provider still receives normal page requests. It is saved in
+                this browser so you can come back to it, and &ldquo;Clear all data&rdquo; removes it. Deal data never appears in the page address, and there are
+                no analytics.
+              </p>
+            </details>
+            <details class="faq__item" id="faq-import">
+              <summary>Can I import my own investor list and bank statement?</summary>
+              <p>
+                Yes, as CSV: choose a file or paste the text. The investor list needs a name, a payment reference and the cash due; the bank statement needs a
+                date and an amount, plus the payer and reference for matching. Common header names are accepted, such as &ldquo;paid in&rdquo; or
+                &ldquo;credit&rdquo; for the amount and &ldquo;narrative&rdquo; or &ldquo;description&rdquo; for the reference. Payments out are skipped and
+                listed. If any row has an error, nothing is imported and every error is listed with its row and column.
+                <a href="https://github.com/deal-ops/deal-ops-toolkit/tree/main/fixtures">Example files</a> are in the GitHub repository.
+              </p>
+            </details>
+            <details class="faq__item" id="faq-currency">
+              <summary>Which currencies?</summary>
+              <p>
+                One currency per deal: GBP, EUR or USD. Amounts are never converted; changing the currency only relabels them, and the app asks first. While a
+                fee payer change is active, the currency is locked until you reverse it.
+              </p>
+            </details>
+            <details class="faq__item" id="faq-export">
+              <summary>What can I take away?</summary>
+              <p>
+                CSV exports of the reconciliation ledger, the chase list, the allocation, the holdings, the exit distribution and the activity log, each with a
+                currency column. The closing confirmation can be copied as text.
+              </p>
+            </details>
+          </div>
+        </div>
+        <div class="faq__group">
+          <h3 class="faq__h">Common situations</h3>
+          <div class="faq__list">
+            <details class="faq__item" id="faq-no-reference">
+              <summary>A payment has no reference, or came from a company or family office account.</summary>
+              <p>
+                A receipt is booked automatically only when its reference contains exactly one investor&rsquo;s payment reference. Anything else gets up to
+                three suggested investors with a score and the reasons, and stays unbooked until a person confirms it, assigns it to someone else or marks it as
+                not part of this deal. &ldquo;Copy query&rdquo; gives you a short note to ask the investor; it mentions only the date, the amount and the
+                currency. Receipts left unmatched for more than 10 days (you can change the number) are flagged for review.
+              </p>
+            </details>
+            <details class="faq__item" id="faq-not-arrived">
+              <summary>An investor says they paid, but nothing has arrived.</summary>
+              <p>
+                The chase list shows who is short or has not paid, and by how much. &ldquo;Copy message&rdquo; gives you an email to send yourself; it asks
+                anyone who has already paid to get the MT103 (or equivalent) showing the UETR from their bank, so the payment can be traced. The app never sends
+                anything.
+              </p>
+            </details>
+            <details class="faq__item" id="faq-oversubscribed">
+              <summary>The round is oversubscribed, or someone is below the minimum.</summary>
+              <p>
+                Over the cap, everyone is scaled back pro rata and the excess is listed as refunds. Investors below the minimum commitment are refunded in full.
+                If scale-back takes someone below the minimum, the allocation says it cannot close and names them, so you can decide.
+              </p>
+            </details>
+            <details class="faq__item" id="faq-withdraw">
+              <summary>An investor withdraws before closing.</summary>
+              <p>
+                Mark them withdrawn with their written consent and a date; it can be undone. They are not chased and not carried into the allocation, everything
+                they paid is listed to refund, and the closing confirmation lists them separately.
+              </p>
+            </details>
+            <details class="faq__item" id="faq-fees">
+              <summary>Who pays the fees, and can that change?</summary>
+              <p>
+                Investors (a percentage, taken from the payment or added on top, or a fixed amount each), the company (taken from the wire) or the lead
+                (invoiced). Before closing you can move a percentage fee to a different payer: the app previews each investor&rsquo;s top-up or refund and the
+                consent needed, and the change can be reversed in one step. It needs the allocation carried in from reconciliation, up to date and not edited
+                since; the preview blocks a change while the round is over its cap, or one that would take an investor below the minimum.
+              </p>
+            </details>
+            <details class="faq__item" id="faq-carry">
+              <summary>What carry terms are supported?</summary>
+              <p>
+                Fixed carry with an optional hurdle (compounded yearly) and catch-up, or tiered carry by return multiple, each tier at its own rate. Exit costs
+                come off first, then capital is returned, then profit is split. Each step shows what went to investors and to the lead, and why.
+              </p>
+            </details>
+          </div>
+        </div>
+        <div class="faq__group">
+          <h3 class="faq__h">Trust and status</h3>
+          <div class="faq__list">
+            <details class="faq__item" id="faq-right">
+              <summary>How do I know the numbers are right?</summary>
+              <p>
+                Money is kept in whole pence or cents and the maths uses whole numbers only, with no floating point. A separate implementation, written in
+                Python from the rules alone, is checked against the app on generated cases, and the tests are checked by deliberately breaking the code. Every
+                calculation checks its own totals and shows no figures if a check fails. Still, check every result yourself before you rely on it.
+              </p>
+            </details>
+            <details class="faq__item" id="faq-ready">
+              <summary>Is it ready for real deals? How do I report a problem?</summary>
+              <p>
+                It is a working prototype: only what is built, tested and released is described here. Report problems by
+                <a href="mailto:haixiangyuann@gmail.com">email</a>, but please don&rsquo;t send real investor details.
+              </p>
+            </details>
+          </div>
+        </div>
       </section>
 
       <section class="cta" aria-labelledby="cta-h">
@@ -329,14 +478,14 @@
           <h2 class="footer__h">Product</h2>
           <ul>
             <li><a href="https://deal-ops-toolkit.vercel.app">Open the app</a></li>
-            <li><a href="https://github.com/yuannh/deal-ops-toolkit/blob/main/docs/RELEASE_NOTES.md">Release notes</a></li>
+            <li><a href="https://github.com/deal-ops/deal-ops-toolkit/blob/main/docs/RELEASE_NOTES.md">Release notes</a></li>
           </ul>
         </div>
         <div>
           <h2 class="footer__h">Code</h2>
           <ul>
-            <li><a href="https://github.com/yuannh/deal-ops-toolkit">GitHub</a></li>
-            <li><a href="https://github.com/yuannh/deal-ops-toolkit/blob/main/docs/en/REVIEW_SUMMARY.md">Review summary</a></li>
+            <li><a href="https://github.com/deal-ops/deal-ops-toolkit">GitHub</a></li>
+            <li><a href="https://github.com/deal-ops/deal-ops-toolkit/blob/main/docs/en/REVIEW_SUMMARY.md">Review summary</a></li>
           </ul>
         </div>
         <div>

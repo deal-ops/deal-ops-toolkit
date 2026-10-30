@@ -33,7 +33,7 @@ for (const f of new Set([...local, ...fromCss])) if (!existsSync(join(SITE, f)))
 const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]))
 for (const [, a] of html.matchAll(/href="#([^"]+)"/g)) if (!ids.has(a)) fail(`anchor #${a} has no target`)
 for (const [, u] of html.matchAll(/href="(https?:[^"]+)"/g))
-  if (!/^https:\/\/(deal-ops-toolkit\.vercel\.app|github\.com\/yuannh\/deal-ops-toolkit)(\/|$)/.test(u)) fail(`unexpected external link: ${u}`)
+  if (!/^https:\/\/(deal-ops-toolkit\.vercel\.app|github\.com\/deal-ops\/deal-ops-toolkit)(\/|$)/.test(u)) fail(`unexpected external link: ${u}`)
 
 // app sentences, word for word
 const config = readFileSync('src/config.ts', 'utf8')
@@ -45,6 +45,42 @@ for (const name of ['PRIVACY_TEXT', 'DISCLAIMER_TEXT']) {
   else if (!text.includes(s)) fail(`page does not carry ${name} word for word`)
 }
 if (!text.includes('Not affiliated with any platform')) fail('"Not affiliated with any platform" missing')
+
+// FAQ (handbook §4.5): every question has its own id, a summary and one answer; the data answer carries the app's privacy
+// sentence; quoted phrases are app labels or CSV header aliases; no numbers beyond a fixed few (test counts live in the trust section)
+const allIds = [...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1])
+for (const d of new Set(allIds.filter((v, i) => allIds.indexOf(v) !== i))) fail(`duplicate id: ${d}`)
+const faq = /<section class="faq"[\s\S]*?<\/section>/.exec(html)?.[0] ?? ''
+const items = [...faq.matchAll(/<details class="faq__item" id="(faq-[a-z-]+)">\s*<summary>[^<]+<\/summary>\s*<p>(?:(?!<\/?p\b)[\s\S])+<\/p>\s*<\/details>/g)]
+if (items.length < 1 || items.length !== (faq.match(/<details\b/g) ?? []).length) fail('FAQ: every <details> needs an faq-* id, a summary and one answer')
+if (!html.includes('<a href="#faq">FAQ</a>')) fail('FAQ: nav link missing')
+const faqText = faq
+  .replace(/<[^>]+>/g, ' ')
+  .replace(/&rdquo;|&ldquo;/g, '"')
+  .replace(/&rsquo;/g, "'")
+  .replace(/\s+/g, ' ')
+const dataAnswer = (/<details class="faq__item" id="faq-data">[\s\S]*?<p>([\s\S]*?)<\/p>/.exec(faq)?.[1] ?? '').replace(/\s+/g, ' ')
+if (!dataAnswer.includes(sentence('PRIVACY_TEXT') ?? '\0')) fail('FAQ: the data answer (#faq-data) does not carry PRIVACY_TEXT word for word')
+// a quoted phrase must be, whole, an on-screen app label (a string literal or JSX text in the app's .tsx files, not tests,
+// comments removed) or a CSV header alias in src/lib/csv.ts
+const stripComments = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[\s;{}(),])\/\/.*$/gm, '$1')
+const tsx = (d) =>
+  readdirSync(d, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? tsx(join(d, e.name)) : e.name.endsWith('.tsx') && !e.name.includes('.test.') ? [join(d, e.name)] : [],
+  )
+const appSrc = tsx('src')
+  .map((f) => stripComments(readFileSync(f, 'utf8')))
+  .join('\n')
+const csvSrc = stripComments(readFileSync('src/lib/csv.ts', 'utf8'))
+const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+for (const [, q] of faq.matchAll(/&ldquo;([^&]+)&rdquo;/g)) {
+  const literal = new RegExp(`(['"\`])${esc(q)}\\1`)
+  const jsxText = new RegExp(`>\\s*${esc(q)}\\s*<`)
+  if (!literal.test(appSrc) && !jsxText.test(appSrc) && !literal.test(csvSrc)) fail(`FAQ quotes "${q}", which is neither an app label nor a CSV header alias`)
+}
+// numbers: only these fixed ones (3-minute tour, 10 days, Apache-2.0, MT103); test counts live in the trust section only
+for (const [n] of faqText.matchAll(/\d[\d,.]*\d|\d/g))
+  if (!['3', '10', '2.0', '103'].includes(n)) fail(`FAQ: number ${n} is not allowed (test counts belong in the trust section)`)
 
 // trust figures (P9): each must be backed by the release notes
 const notes = readFileSync('docs/RELEASE_NOTES.md', 'utf8')
